@@ -1,0 +1,107 @@
+@primary-color: #1890ff;
+@border-radius-base: 4px;
+@card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: auto;
+  background: #f0f2f5;
+  background-image: url('https://gw.alipayobjects.com/zos/rmsportal/TVYTbAXWheQpRcWDaDMu.svg');
+  background-repeat: no-repeat;
+  background-position: center 110px;
+  background-size: 100%;
+  padding: 20px;
+}
+
+.card {
+  width: 400px;
+  margin: 0 auto;
+  padding: 40px;
+  border-radius: @border-radius-base;
+  box-shadow: @card-shadow;
+  background: #fff;
+
+  .logo {
+    text-align: center;
+    margin-bottom: 24px;
+
+    .logoImg {
+      height: 44px;
+      margin-bottom: 16px;
+    }
+
+    .title {
+      margin-bottom: 0;
+      color: rgba(0, 0, 0, 85%);
+      font-weight: 500;
+    }
+  }
+
+  .alert {
+    margin-bottom: 24px;
+  }
+
+  .tabs {
+    margin-bottom: 24px;
+
+    .ant-tabs-nav::before {
+      border-bottom: none;
+    }
+
+    .ant-tabs-tab {
+      padding: 12px 16px;
+      font-size: 16px;
+    }
+  }
+
+  .prefixIcon {
+    color: @primary-color;
+    font-size: 16px;
+  }
+
+  .captchaContainer {
+    margin-bottom: 24px;
+
+    .captchaImg {
+      height: 40px;
+      cursor: pointer;
+      border-radius: @border-radius-base;
+    }
+  }
+
+  .submitButton {
+    margin-top: 24px;
+    height: 48px;
+    font-size: 16px;
+    border-radius: @border-radius-base;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+    color: @primary-color;
+
+    .ant-divider {
+      background-color: @primary-color;
+      height: 14px;
+      margin: 0 16px;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 12px;
+    background-image: none;
+  }
+
+  .card {
+    width: 100%;
+    padding: 24px;
+    box-shadow: none;
+    border: 1px solid #f0f0f0;
+  }
+}
