@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   IdcardOutlined,
   MailOutlined,
@@ -22,8 +22,9 @@ import {
   Tabs
 } from 'antd';
 import { history } from '@umijs/max';
+import { useModel } from '@umijs/max';
 import styles from './index.less';
-import { login, loginEmail, sendEmailCode } from '@/services/auth';
+import { login, loginEmail, sendEmailCode, saveToken, convertLoginResponseToUserInfo } from '@/services/auth';
 
 const { Title, Link } = Typography;
 const { TabPane } = Tabs;
@@ -33,6 +34,14 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loginType, setLoginType] = useState<'studentId' | 'email'>('studentId');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { updateUserInfo } = useModel('global');
+
+  useEffect(() => {
+    if (sessionStorage.getItem('login_redirect') === '1') {
+      message.info('请先登录');
+      sessionStorage.removeItem('login_redirect');
+    }
+  }, []);
 
   // 切换登录方式
   const handleTabChange = (key: string) => {
@@ -65,11 +74,22 @@ const Login: React.FC = () => {
     setErrorMsg(null);
     setLoading(true);
     try {
+      let response;
       if (loginType === 'studentId') {
-        await login(values);
+        response = await login(values);
       } else {
-        await loginEmail(values);
+        response = await loginEmail(values);
       }
+      
+      // 保存JWT令牌
+      if (response.token) {
+        saveToken(response.token);
+      }
+      
+      // 转换并更新用户信息
+      const userInfo = convertLoginResponseToUserInfo(response);
+      updateUserInfo(userInfo);
+      
       message.success('登录成功');
       history.push('/home');
     } catch (error: any) {

@@ -1,11 +1,37 @@
 // src/services/auth.ts
 import { request } from '@umijs/max';
 
+// 用户信息接口
+export interface UserInfo {
+  id: string;
+  realName: string;
+  avatarUrl?: string; // 统一头像字段
+  studentId: string;
+  email: string;
+  classCode?: string;
+  role?: string | number | null;
+  roleType?: number;
+  status?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// 登录响应接口 - 匹配实际后端格式
+export interface LoginResponse {
+  token: string;
+  studentId: string;
+  avatarUrl: string;
+  userId: number;
+  email: string;
+  realName: string;
+  roleType: number;
+  expireTime: string;
+}
+
 /**
  * 发送邮箱验证码
  * @param email 邮箱地址
  */
-// src/services/auth.ts
 export async function sendEmailCode(email: string) {
   return request('/api/auth/send-code', {
     method: 'POST',
@@ -45,15 +71,15 @@ export async function registerUser(data: {
 }
 
 /**
- * 
- * @param data Use the email or studentId to login in
- * @returns POST request
+ * 学号登录
+ * @param data 登录信息
+ * @returns 登录响应
  */
 export async function login(data: {
   studentId?: string;
   email?: string;
   password: string;
-}) {
+}): Promise<LoginResponse> {
   return request('/api/auth/login', {
     method: 'POST',
     data,
@@ -63,10 +89,15 @@ export async function login(data: {
   });
 }
 
+/**
+ * 邮箱验证码登录
+ * @param data 登录信息
+ * @returns 登录响应
+ */
 export async function loginEmail(data: {
   email?: string;
-  code?: string
-}) {
+  code?: string;
+}): Promise<LoginResponse> {
   return request('/api/auth/loginEmail', {
     method: 'POST',
     data,
@@ -74,4 +105,70 @@ export async function loginEmail(data: {
       'Content-Type': 'application/json',
     },
   });
+}
+
+/**
+ * 获取当前用户信息
+ * @returns 用户信息
+ */
+export async function getCurrentUser(): Promise<UserInfo> {
+  return request('/api/auth/me', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  });
+}
+
+/**
+ * 保存JWT令牌到本地存储
+ * @param token JWT令牌
+ */
+export function saveToken(token: string): void {
+  localStorage.setItem('token', token);
+}
+
+/**
+ * 从本地存储获取JWT令牌
+ * @returns JWT令牌或null
+ */
+export function getToken(): string | null {
+  return localStorage.getItem('token');
+}
+
+/**
+ * 清除本地存储的令牌
+ */
+export function clearToken(): void {
+  localStorage.removeItem('token');
+}
+
+/**
+ * 检查是否已登录
+ * @returns 是否已登录
+ */
+export function isLoggedIn(): boolean {
+  return !!getToken();
+}
+
+/**
+ * 将登录响应转换为用户信息对象
+ * @param response 登录响应
+ * @returns 用户信息对象
+ */
+export function convertLoginResponseToUserInfo(response: any): UserInfo {
+  return {
+    id: response.userId?.toString() || response.id?.toString() || '',
+    realName: response.realName,
+    avatarUrl: response.avatarUrl || response.avatar_url || '',
+    studentId: response.studentId,
+    email: response.email,
+    classCode: response.classCode,
+    role: response.role,
+    roleType: response.roleType,
+    status: response.status,
+    createdAt: response.createdAt,
+    updatedAt: response.updatedAt,
+  };
 }

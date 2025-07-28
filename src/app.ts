@@ -1,4 +1,6 @@
 // 运行时配置
+import { getToken } from '@/services/auth';
+import { history } from '@umijs/max';
 
 // 全局初始化数据配置，用于 Layout 用户信息和权限初始化
 // 更多信息见文档：https://umijs.org/docs/api/runtime-config#getinitialstate
@@ -28,11 +30,46 @@ export const layout = () => {
     },
     // 页脚配置
     footerRender: false, // 隐藏页脚
-    // 水印配置
-    waterMarkProps: {
-      content: 'WorkUpload',
-    },
   };
 };
+
+// 请求拦截器配置
+export const request = {
+  timeout: 10000,
+  errorConfig: {
+    errorHandler: (error: any) => {
+      console.error('请求错误:', error);
+    },
+  },
+  requestInterceptors: [
+    (config: any) => {
+      // 添加JWT令牌到请求头
+      const token = getToken();
+      if (token) {
+        config.headers = {
+          ...config.headers,
+          'Authorization': `Bearer ${token}`,
+        };
+      }
+      return config;
+    },
+  ],
+  responseInterceptors: [
+    (response: any) => {
+      return response;
+    },
+  ],
+};
+
+// 全局路由守卫
+export function onRouteChange({ location }: { location: { pathname: string } }) {
+  const token = getToken();
+  const whiteList = ['/user/login', '/user/register', '/User/Login', '/User/Register'];
+  const isWhite = whiteList.some((path) => location.pathname.toLowerCase().startsWith(path.toLowerCase()));
+  if (!token && !isWhite) {
+    sessionStorage.setItem('login_redirect', '1');
+    history.replace('/user/login');
+  }
+}
 
 

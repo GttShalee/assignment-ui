@@ -29,7 +29,7 @@ interface Announcement {
 }
 
 const HomePage: React.FC = () => {
-  const { name } = useModel('global');
+  const { name, userInfo } = useModel('global');
   const [time, setTime] = useState<string>(new Date().toLocaleString());
   const [poem, setPoem] = useState<string>('');
   const [latestAnnouncement, setLatestAnnouncement] = useState<Announcement | null>(null);

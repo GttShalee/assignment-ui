@@ -1,0 +1,97 @@
+@primary: #3b82f6;
+@card-bg: #fff;
+@border: #e5e7eb;
+@text-main: #222;
+@text-sub: #666;
+
+.profileWrap {
+  padding: 32px 0;
+  display: flex;
+  justify-content: center;
+  background: #f7fafd;
+}
+
+.profileCard {
+  max-width: 800px;
+  margin: 0 auto;
+  border-radius: 12px;
+  box-shadow: 10 2px 16px 0 rgba(59,130,246,0.08);
+  background: @card-bg;
+  padding: 32px 32px 24px 32px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.avatar {
+  margin-right: 28px;
+  background: linear-gradient(135deg, #60a5fa 0%, #818cf8 100%);
+  color: #fff;
+  font-size: 32px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px 0 rgba(59,130,246,0.10);
+}
+
+.userInfoText {
+  flex: 1;
+  min-width: 0;
+  h2 {
+    margin: 0 0 4px 0;
+    font-size: 24px;
+    color: @text-main;
+    font-weight: 600;
+    letter-spacing: 1px;
+    word-break: break-all;
+  }
+  p {
+    margin: 0;
+    color: @text-sub;
+    font-size: 15px;
+  }
+}
+
+.editBtn {
+  margin-left: auto;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.infoTable {
+  margin-top: 12px;
+  border-radius: 8px;
+  background: #fafbfc;
+  width: 500px; // 设置固定宽度，让表格靠左
+  .ant-table-thead > tr > th {
+    background: #f1f5f9;
+    color: @primary;
+    font-weight: 500;
+    border-bottom: 1px solid @border;
+  }
+  .ant-table-tbody > tr > td {
+    font-size: 15px;
+    color: @text-main;
+    border-bottom: 1px solid @border;
+  }
+}
+
+.tableLabel {
+  color: @primary;
+  font-weight: 500;
+}
+
+.tableValue {
+  color: @text-main;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  h2, p {
+    margin: 0;
+    white-space: nowrap;
+  }
+} 

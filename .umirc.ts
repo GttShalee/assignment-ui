@@ -14,29 +14,7 @@ export default defineConfig({
   routes: [
     {
       path: "/",
-      redirect: "/User/Login/index",
-    },
-    {
-      name: "首页",
-      path: "/home",
-      component: "./Home",
-    },
-    {
-      name: "公告",
-      path: "/notify/announcement",
-      component: "./notify/announcement",
-      hideInMenu: true,
-    },
-    {
-      name:"发布作业",
-      path:"/work/workSend",
-      component: "./work/workSend",
-      // access: "isStudier", // 仅当为学委用户可以访问
-    },
-    {
-      name: "作业列表",
-      path: "/work/workList",
-      component: "./work/workList",
+      redirect: "/User/Login",
     },
     {
       name: "注册",
@@ -51,6 +29,40 @@ export default defineConfig({
       component: "./User/Login",
       hideInMenu: true,
       layout:false
+    },
+    {
+      name: "首页",
+      path: "/home",
+      component: "./Home",
+    },
+    {
+      name: "公告",
+      path: "/notify/announcement",
+      component: "./notify/announcement",
+      hideInMenu: true,
+    },
+    {
+      name:"我的作业",
+      path:"/work",
+      icon: "FileTextOutlined",
+      routes: [
+        {
+          name:"发布作业",
+          path:"/work/workSend",
+          component: "./work/workSend",
+          // access: "isStudier", // 仅当为学委用户可以访问
+        },
+        {
+          name: "作业列表",
+          path: "/work/workList",
+          component: "./work/workList",
+        },
+      ]
+    },
+    {
+      name: "个人主页",
+      path: "User/Profile",
+      component: "./User/Profile"
     }
   ],
 
