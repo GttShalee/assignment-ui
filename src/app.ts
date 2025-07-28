@@ -1,11 +1,25 @@
 // 运行时配置
-import { getToken } from '@/services/auth';
+import { getToken, getCurrentUser } from '@/services/auth';
 import { history } from '@umijs/max';
 
 // 全局初始化数据配置，用于 Layout 用户信息和权限初始化
 // 更多信息见文档：https://umijs.org/docs/api/runtime-config#getinitialstate
-export async function getInitialState(): Promise<{ name: string }> {
-  return { name: 'WorkUpload' };
+export async function getInitialState(): Promise<{ name: string; currentUser?: any }> {
+  const token = getToken();
+  if (!token) {
+    return { name: 'WorkUpload' };
+  }
+
+  try {
+    const currentUser = await getCurrentUser();
+    return { 
+      name: 'WorkUpload',
+      currentUser 
+    };
+  } catch (error) {
+    console.error('获取用户信息失败:', error);
+    return { name: 'WorkUpload' };
+  }
 }
 
 export const layout = () => {

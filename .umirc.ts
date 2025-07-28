@@ -48,15 +48,20 @@ export default defineConfig({
       routes: [
         {
           name:"发布作业",
-          path:"/work/workSend",
-          component: "./work/workSend",
-          // access: "isStudier", // 仅当为学委用户可以访问
+          path:"/work/WorkSend",
+          component: "./work/WorkSend",
+          access: "isStudier", // 仅当为学委用户可以访问
         },
         {
           name: "作业列表",
           path: "/work/workList",
           component: "./work/workList",
         },
+        {
+          name: "作业记录",
+          path: "/work/WorkStatistics",
+          component:"./work/WorkStatistics",
+        }
       ]
     },
     {

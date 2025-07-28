@@ -21,8 +21,14 @@ const useUser = () => {
     try {
       setLoading(true);
       const user = await getCurrentUser();
-      setUserInfo(user);
-      setName(user.realName);
+      if (user && user.realName) {
+        setUserInfo(user);
+        setName(user.realName);
+      } else {
+        console.warn('获取到的用户信息不完整:', user);
+        setUserInfo(null);
+        setName(DEFAULT_NAME);
+      }
     } catch (error) {
       console.error('获取用户信息失败:', error);
       setUserInfo(null);
@@ -34,8 +40,10 @@ const useUser = () => {
 
   // 更新用户信息
   const updateUserInfo = useCallback((user: UserInfo) => {
-    setUserInfo(user);
-    setName(user.realName);
+    if (user && user.realName) {
+      setUserInfo(user);
+      setName(user.realName);
+    }
   }, []);
 
   // 清除用户信息
@@ -44,7 +52,7 @@ const useUser = () => {
     setName(DEFAULT_NAME);
   }, []);
 
-  // 组件挂载时只获取一次用户信息
+  // 组件挂载时获取用户信息
   useEffect(() => {
     if (!initialized) {
       fetchUserInfo();

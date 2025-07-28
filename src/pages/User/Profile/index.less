@@ -53,10 +53,19 @@
   }
 }
 
+.buttonGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .editBtn {
-  margin-left: auto;
-  border-radius: 6px;
-  font-weight: 500;
+  background: @primary;
+  border-color: @primary;
+  &:hover {
+    background: darken(@primary, 10%);
+    border-color: darken(@primary, 10%);
+  }
 }
 
 .infoTable {

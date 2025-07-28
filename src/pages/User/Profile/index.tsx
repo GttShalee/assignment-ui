@@ -1,13 +1,32 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import { PageContainer } from '@ant-design/pro-components';
-import { Card, Table, Avatar, Button, Tag } from 'antd';
-import { UserOutlined, EditOutlined } from '@ant-design/icons';
+import { Card, Table, Avatar, Button, Tag, Spin, message } from 'antd';
+import { UserOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useModel } from '@umijs/max';
 import styles from './index.less';
 
 const UserProfile: React.FC = () => {
-  const { userInfo } = useModel('global');
+  const { userInfo, loading, fetchUserInfo } = useModel('global');
   const [avatarError, setAvatarError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // 强制刷新用户信息
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchUserInfo();
+      message.success('用户信息已刷新');
+    } catch (error) {
+      message.error('刷新失败，请重试');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // 组件挂载时强制刷新用户信息
+  useEffect(() => {
+    handleRefresh();
+  }, []);
 
   // 获取头像URL（兼容avatar_url和avatarUrl）
   const avatarUrl = userInfo?.avatarUrl || (userInfo as any)?.avatar_url;
@@ -43,6 +62,22 @@ const UserProfile: React.FC = () => {
     avatarNode = <Avatar size={80} className={styles.avatar}>{userInfo.realName.charAt(0)}</Avatar>;
   }
 
+  // 如果正在加载，显示加载状态
+  if (loading || refreshing || !userInfo) {
+    return (
+      <PageContainer>
+        <div className={styles.profileWrap}>
+          <Card className={styles.profileCard}>
+            <div style={{ textAlign: 'center', padding: '50px 0' }}>
+              <Spin size="large" />
+              <div style={{ marginTop: 16, color: '#666' }}>正在加载用户信息...</div>
+            </div>
+          </Card>
+        </div>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer>
       <div className={styles.profileWrap}>
@@ -56,14 +91,24 @@ const UserProfile: React.FC = () => {
               </div>
               <p>学号：{userInfo?.studentId || '-'}</p>
             </div>
-            <Button 
-              type="primary" 
-              icon={<EditOutlined />}
-              className={styles.editBtn}
-              disabled
-            >
-              编辑信息
-            </Button>
+            <div className={styles.buttonGroup}>
+              <Button 
+                type="primary" 
+                icon={<EditOutlined />}
+                className={styles.editBtn}
+                disabled
+              >
+                编辑信息
+              </Button>
+              <Button 
+                icon={<ReloadOutlined />}
+                onClick={handleRefresh}
+                loading={refreshing}
+                style={{ marginLeft: 8 }}
+              >
+                刷新
+              </Button>
+            </div>
           </div>
 
           <Table
