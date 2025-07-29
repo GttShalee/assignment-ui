@@ -2,23 +2,25 @@ import { request } from '@umijs/max';
 
 // 作业接口类型定义
 export interface Homework {
-  id?: number;
-  class_code: string;
+  id: number;
+  class_code: string;   // 班级代码
   title: string;
   description: string;
-  attachment_url?: string;
+  attachment_url: string | null;   // 附件
   publish_time: string;
   deadline: string;
+  file_name: string | null;   // 要求作业命名格式
   total_score: number;
   status: number;
-  created_at?: string;
-  updated_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateHomeworkRequest {
   class_code: string;
   title: string;
   description: string;
+  file_name?: string;
   attachment_url?: string;
   publish_time: string;
   deadline: string;
@@ -57,9 +59,31 @@ export async function getHomeworkList(params?: {
   pageSize?: number;
 }): Promise<{
   content: Homework[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    sort: {
+      empty: boolean;
+      sorted: boolean;
+      unsorted: boolean;
+    };
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+  };
+  last: boolean;
   totalElements: number;
-  number: number;
+  totalPages: number;
+  first: boolean;
+  numberOfElements: number;
   size: number;
+  number: number;
+  sort: {
+    empty: boolean;
+    sorted: boolean;
+    unsorted: boolean;
+  };
+  empty: boolean;
 }> {
   return request('/api/homework', {
     method: 'GET',

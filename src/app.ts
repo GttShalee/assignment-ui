@@ -7,11 +7,13 @@ import { history } from '@umijs/max';
 export async function getInitialState(): Promise<{ name: string; currentUser?: any }> {
   const token = getToken();
   if (!token) {
+    console.log('No token found, returning default state');
     return { name: 'WorkUpload' };
   }
 
   try {
     const currentUser = await getCurrentUser();
+    console.log('Initial state loaded:', { currentUser });
     return { 
       name: 'WorkUpload',
       currentUser 

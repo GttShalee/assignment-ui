@@ -16,7 +16,8 @@ import {
   Alert,
   Tabs,
   Divider,
-  Statistic
+  Statistic,
+  DatePicker
 } from 'antd';
 import { 
   UploadOutlined, 
@@ -26,14 +27,20 @@ import {
   FileOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
-  WarningOutlined
+  WarningOutlined,
+  DeleteOutlined,
+  EditOutlined
 } from '@ant-design/icons';
 import type { ColumnsType, TableProps } from 'antd/es/table';
 import type { UploadFile, RcFile } from 'antd/es/upload/interface';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import { getHomeworkList, deleteHomework, updateHomework } from '@/services/homework';
+import { useModel } from '@umijs/max';
 
 dayjs.extend(duration);
+dayjs.extend(relativeTime);
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -41,77 +48,27 @@ const { confirm } = Modal;
 const { TextArea } = Input;
 const { Countdown } = Statistic;
 
-interface Assignment {
-  id: string;
-  name: string;
-  deadline: string;
-  requirements: string;
-  status: 'pending' | 'submitted' | 'overdue';
-  submitTime?: string;
-  submittedFiles?: string[];
-  remark?: string;
-}
-
-// 模拟数据 - 故意打乱顺序
-const mockAssignments: Assignment[] = [
-  {
-    id: '3',
-    name: '英语论文 - 人工智能伦理',
-    deadline: dayjs().add(5, 'day').toISOString(),
-    requirements: '撰写一篇关于人工智能伦理的英文论文，不少于2000字，引用至少5篇学术文献。',
-    status: 'pending',
-  },
-  {
-    id: '1',
-    name: '数学作业 - 线性代数习题',
-    deadline: dayjs().add(23, 'hour').add(59, 'minute').add(30, 'second').toISOString(), // 即将截止
-    requirements: '完成教材第5章所有习题，要求手写并拍照上传，每题需有详细解题过程。',
-    status: 'pending',
-  },
-  {
-    id: '4',
-    name: '物理实验报告 - 光的折射',
-    deadline: dayjs().add(7, 'day').toISOString(),
-    requirements: '根据实验数据完成实验报告，包括实验目的、步骤、数据分析和结论，需附上实验数据表格和图表。',
-    status: 'pending',
-  },
-  {
-    id: '2',
-    name: '编程作业 - React电商网站',
-    deadline: dayjs().add(3, 'day').toISOString(),
-    requirements: '使用React和Ant Design实现一个简易电商网站，包含商品列表、购物车和结算功能。代码需上传至GitHub并提交仓库链接。',
-    status: 'submitted',
-    submitTime: dayjs().subtract(1, 'day').toISOString(),
-    submittedFiles: ['项目文档.docx', '源代码.zip'],
-    remark: '已上传项目文档和完整源代码'
-  },
-  {
-    id: '5',
-    name: '数据结构作业 - 二叉树遍历',
-    deadline: dayjs().subtract(2, 'day').toISOString(), // 已逾期超过1天
-    requirements: '实现二叉树的三种遍历算法（前序、中序、后序），并用C++编写测试代码。',
-    status: 'overdue',
-  },
-  {
-    id: '6',
-    name: '化学实验 - 酸碱中和',
-    deadline: dayjs().add(12, 'hour').toISOString(), // 24小时内
-    requirements: '完成酸碱中和实验并记录实验数据，计算中和点。',
-    status: 'pending',
-  },
-];
+// 导入后端接口类型
+import { Homework } from '@/services/homework';
 
 const WorkList: React.FC = () => {
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const { userInfo } = useModel('global');
+  const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [submitModalVisible, setSubmitModalVisible] = useState(false);
-  const [currentSubmittingId, setCurrentSubmittingId] = useState<string | null>(null);
+  const [currentSubmittingId, setCurrentSubmittingId] = useState<number | null>(null);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [activeTab, setActiveTab] = useState('ongoing');
   const [form] = Form.useForm();
   const [now, setNow] = useState(dayjs());
+  
+  // 编辑相关状态
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingHomework, setEditingHomework] = useState<Homework | null>(null);
+  const [editForm] = Form.useForm();
+  const [editLoading, setEditLoading] = useState(false);
 
   // 每秒更新当前时间
   useEffect(() => {
@@ -122,38 +79,31 @@ const WorkList: React.FC = () => {
   }, []);
 
   // 分类作业数据
-  const categorizedAssignments = {
-    // 正在进行中的作业（逾期1天以内，待提交的作业）
-    ongoing: assignments.filter(assignment => 
-      assignment.status === 'pending' && 
-      now.isBefore(dayjs(assignment.deadline).add(1, 'day'))
+  const categorizedHomeworks = {
+    // 正在进行中的作业（状态为1且未截止）
+    ongoing: homeworks.filter(homework => 
+      homework.status === 1 && 
+      now.isBefore(dayjs(homework.deadline))
     ),
     
-    // 已提交作业
-    submitted: assignments.filter(assignment => 
-      assignment.status === 'submitted'
+    // 已提交作业（状态为2或3）
+    submitted: homeworks.filter(homework => 
+      homework.status === 2 || homework.status === 3
     ),
     
-    // 未提交作业（逾期超过1天）
-    overdue: assignments.filter(assignment => 
-      assignment.status === 'pending' && 
-      now.isAfter(dayjs(assignment.deadline).add(1, 'day'))
+    // 未提交作业（状态为1但已截止）
+    overdue: homeworks.filter(homework => 
+      homework.status === 1 && 
+      now.isAfter(dayjs(homework.deadline))
     )
   };
 
-  // 模拟API获取数据并按截止时间排序
-  const fetchAssignments = async () => {
+  // 获取作业列表
+  const fetchHomeworks = async () => {
     setLoading(true);
     try {
-      // 模拟网络延迟
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // 获取数据后按截止时间升序排序
-      const sortedData = [...mockAssignments].sort((a, b) => 
-        dayjs(a.deadline).unix() - dayjs(b.deadline).unix()
-      );
-      
-      setAssignments(sortedData);
+      const response = await getHomeworkList();
+      setHomeworks(response.content || []);
     } catch (error) {
       message.error('获取作业列表失败');
       console.error(error);
@@ -163,7 +113,7 @@ const WorkList: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchAssignments();
+    fetchHomeworks();
   }, []);
 
   // 文件上传前检查
@@ -177,7 +127,7 @@ const WorkList: React.FC = () => {
   };
 
   // 打开提交模态框
-  const openSubmitModal = (id: string) => {
+  const openSubmitModal = (id: number) => {
     setCurrentSubmittingId(id);
     setSubmitModalVisible(true);
     form.resetFields();
@@ -190,27 +140,13 @@ const WorkList: React.FC = () => {
     
     try {
       setLoading(true);
-      // 模拟API调用延迟
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // 更新状态并重新排序
-      setAssignments(prev => {
-        const updated = prev.map(item => 
-          item.id === currentSubmittingId 
-            ? { 
-                ...item, 
-                status: 'submitted', 
-                submitTime: new Date().toISOString(),
-                submittedFiles: fileList.map(file => file.name),
-                remark: values.remark
-              } 
-            : item
-        );
-        return updated.sort((a, b) => dayjs(a.deadline).unix() - dayjs(b.deadline).unix());
-      });
+      // TODO: 调用提交作业的API
+      // await submitHomework(currentSubmittingId, values, fileList);
       
       message.success('作业提交成功');
       setSubmitModalVisible(false);
+      // 重新获取作业列表
+      fetchHomeworks();
     } catch (error) {
       message.error('提交失败');
       console.error(error);
@@ -220,45 +156,135 @@ const WorkList: React.FC = () => {
   };
 
   // 查看作业详情
-  const handleViewDetails = (assignment: Assignment) => {
-    setSelectedAssignment(assignment);
+  const handleViewDetails = (homework: Homework) => {
+    setSelectedHomework(homework);
     setModalVisible(true);
   };
 
   // 撤回作业
-  const handleWithdraw = (id: string) => {
+  const handleWithdraw = (id: number) => {
     confirm({
       title: '确认撤回作业?',
       icon: <ExclamationCircleOutlined />,
       content: '撤回后可以重新提交',
       onOk: async () => {
         try {
-          // 模拟API调用延迟
-          await new Promise(resolve => setTimeout(resolve, 300));
-          
-          // 更新状态并重新排序
-          setAssignments(prev => {
-            const updated = prev.map(item => 
-              item.id === id 
-                ? { 
-                    ...item, 
-                    status: 'pending', 
-                    submitTime: undefined,
-                    submittedFiles: undefined,
-                    remark: undefined
-                  } 
-                : item
-            );
-            return updated.sort((a, b) => dayjs(a.deadline).unix() - dayjs(b.deadline).unix());
-          });
+          // TODO: 调用撤回作业的API
+          // await withdrawHomework(id);
           
           message.success('作业已撤回');
+          fetchHomeworks();
         } catch (error) {
           message.error('撤回失败');
           console.error(error);
         }
       },
     });
+  };
+
+  // 检查是否有删除权限
+  const canDeleteHomework = (homework: Homework) => {
+    if (!userInfo) return false;
+    
+    // 管理员可以删除所有作业
+    if (userInfo.roleType === 0) return true;
+    
+    // 学委只能删除本班级的作业
+    if (userInfo.roleType === 2) {
+      return homework.class_code === userInfo.classCode;
+    }
+    
+    return false;
+  };
+
+  // 检查是否有编辑权限
+  const canEditHomework = (homework: Homework) => {
+    if (!userInfo) return false;
+    
+    // 管理员可以编辑所有作业
+    if (userInfo.roleType === 0) return true;
+    
+    // 学委只能编辑本班级的作业
+    if (userInfo.roleType === 2) {
+      return homework.class_code === userInfo.classCode;
+    }
+    
+    return false;
+  };
+
+  // 删除作业
+  const handleDeleteHomework = (homework: Homework) => {
+    if (!canDeleteHomework(homework)) {
+      message.error('您没有权限删除此作业');
+      return;
+    }
+
+    confirm({
+      title: '确认删除作业?',
+      icon: <ExclamationCircleOutlined />,
+      content: `确定要删除作业"${homework.title}"吗？此操作不可恢复。`,
+      onOk: async () => {
+        try {
+          setLoading(true);
+          await deleteHomework(homework.id);
+          message.success('作业删除成功');
+          fetchHomeworks();
+        } catch (error) {
+          message.error('删除失败');
+          console.error(error);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
+  // 打开编辑模态框
+  const openEditModal = (homework: Homework) => {
+    if (!canEditHomework(homework)) {
+      message.error('您没有权限编辑此作业');
+      return;
+    }
+
+    setEditingHomework(homework);
+    setEditModalVisible(true);
+    editForm.setFieldsValue({
+      title: homework.title,
+      description: homework.description,
+      deadline: dayjs(homework.deadline),
+      file_name: homework.file_name,
+    });
+  };
+
+  // 提交编辑
+  const handleEditSubmit = async (values: {
+    title: string;
+    description: string;
+    deadline: dayjs.Dayjs;
+    file_name: string;
+  }) => {
+    if (!editingHomework) return;
+
+    try {
+      setEditLoading(true);
+      
+      const updateData = {
+        title: values.title,
+        description: values.description,
+        deadline: values.deadline.format('YYYY-MM-DD HH:mm:ss'),
+        file_name: values.file_name,
+      };
+
+      await updateHomework(editingHomework.id, updateData);
+      message.success('作业更新成功');
+      setEditModalVisible(false);
+      fetchHomeworks();
+    } catch (error) {
+      message.error('更新失败');
+      console.error(error);
+    } finally {
+      setEditLoading(false);
+    }
   };
 
   // 格式化剩余时间显示
@@ -285,11 +311,31 @@ const WorkList: React.FC = () => {
     return `${days}天 ${hours}小时`;
   };
 
-  const columns: ColumnsType<Assignment> = [
+  // 获取状态标签
+  const getStatusTag = (status: number, deadline: string) => {
+    const isOverdue = now.isAfter(dayjs(deadline));
+    
+    if (status === 1 && isOverdue) {
+      return <Tag color="red">已逾期</Tag>;
+    }
+    
+    switch (status) {
+      case 1:
+        return <Tag color="orange">进行中</Tag>;
+      case 2:
+        return <Tag color="blue">已截止</Tag>;
+      case 3:
+        return <Tag color="green">已批改</Tag>;
+      default:
+        return <Tag color="gray">未知</Tag>;
+    }
+  };
+
+  const columns: ColumnsType<Homework> = [
     {
-      title: '作业名称',
-      dataIndex: 'name',
-      key: 'name',
+      title: '作业标题',
+      dataIndex: 'title',
+      key: 'title',
       render: (text, record) => (
         <div>
           <div style={{ fontWeight: 'bold' }}>{text}</div>
@@ -303,44 +349,37 @@ const WorkList: React.FC = () => {
       ),
     },
     {
+      title: '命名格式',
+      dataIndex: 'file_name',
+      key: 'file_name',
+      render: (text, record) => (
+        <div>
+          <Tag color="red">{record.file_name}</Tag>
+        </div>
+      ),
+    },
+    {
+      title: '班级',
+      dataIndex: 'class_code',
+      key: 'class_code',
+      width: 120,
+      render: (classCode) => (
+        <Tag color="blue">{classCode}</Tag>
+      ),
+    },
+    {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
       width: 120,
-      render: (status, record) => {
-        const isOverdue = now.isAfter(dayjs(record.deadline));
-        
-        if (status === 'pending' && isOverdue) {
-          return <Tag color="red">已逾期</Tag>;
-        }
-        
-        let color = '';
-        let text = '';
-        switch (status) {
-          case 'pending':
-            color = 'orange';
-            text = '待提交';
-            break;
-          case 'submitted':
-            color = 'blue';
-            text = '已提交';
-            break;
-          case 'overdue':
-            color = 'red';
-            text = '已逾期';
-            break;
-          default:
-            color = 'gray';
-        }
-        return <Tag color={color}>{text}</Tag>;
-      },
+      render: (status, record) => getStatusTag(status, record.deadline),
     },
     {
       title: '剩余时间',
       key: 'timeLeft',
       width: 180,
       render: (_, record) => {
-        if (record.status !== 'pending') return '-';
+        if (record.status !== 1) return '-';
         
         const deadline = dayjs(record.deadline);
         
@@ -375,7 +414,7 @@ const WorkList: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      width: 350,
+      width: 550,
       render: (_, record) => {
         const isBeforeDeadline = now.isBefore(dayjs(record.deadline));
         const isOverdue = now.isAfter(dayjs(record.deadline));
@@ -386,7 +425,7 @@ const WorkList: React.FC = () => {
               type="primary" 
               icon={<UploadOutlined />}
               onClick={() => openSubmitModal(record.id)}
-              disabled={record.status !== 'pending' || (isOverdue && now.isAfter(dayjs(record.deadline).add(1, 'day')))}
+              disabled={record.status !== 1 || (isOverdue && now.isAfter(dayjs(record.deadline).add(1, 'day')))}
             >
               提交
             </Button>
@@ -398,13 +437,41 @@ const WorkList: React.FC = () => {
               查看详情
             </Button>
             
-            {record.status === 'submitted' && isBeforeDeadline && (
+            {(record.status === 2 || record.status === 3) && isBeforeDeadline && (
               <Button 
                 danger 
                 icon={<RollbackOutlined />}
                 onClick={() => handleWithdraw(record.id)}
               >
                 撤回
+              </Button>
+            )}
+            
+            {/* 编辑按钮 - 只有管理员或学委可以看到 */}
+            {(userInfo?.roleType === 0 || userInfo?.roleType === 2) && (
+              <Button 
+                type="primary"
+                ghost
+                icon={<EditOutlined />}
+                onClick={() => openEditModal(record)}
+                disabled={!canEditHomework(record)}
+                title={canEditHomework(record) ? '编辑作业' : '无权限编辑此作业'}
+              >
+                编辑
+              </Button>
+            )}
+            
+            {/* 删除按钮 - 只有管理员或学委可以看到 */}
+            {(userInfo?.roleType === 0 || userInfo?.roleType === 2) && (
+              <Button 
+                danger 
+                type="text"
+                icon={<DeleteOutlined />}
+                onClick={() => handleDeleteHomework(record)}
+                disabled={!canDeleteHomework(record)}
+                title={canDeleteHomework(record) ? '删除作业' : '无权限删除此作业'}
+              >
+                删除
               </Button>
             )}
           </Space>
@@ -430,20 +497,20 @@ const WorkList: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <div style={{ marginRight: '24px' }}>
                 <Text type="secondary">总计:</Text> 
-                <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>{assignments.length}</span>
+                <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>{homeworks.length}</span>
               </div>
               <Divider type="vertical" style={{ height: '24px' }} />
               <div style={{ margin: '0 24px' }}>
                 <Text type="secondary">待提交:</Text> 
                 <span style={{ marginLeft: '8px', fontWeight: 'bold', color: '#fa8c16' }}>
-                  {categorizedAssignments.ongoing.length + categorizedAssignments.overdue.length}
+                  {categorizedHomeworks.ongoing.length + categorizedHomeworks.overdue.length}
                 </span>
               </div>
               <Divider type="vertical" style={{ height: '24px' }} />
               <div style={{ marginLeft: '24px' }}>
                 <Text type="secondary">已提交:</Text> 
                 <span style={{ marginLeft: '8px', fontWeight: 'bold', color: '#1890ff' }}>
-                  {categorizedAssignments.submitted.length}
+                  {categorizedHomeworks.submitted.length}
                 </span>
               </div>
             </div>
@@ -453,12 +520,12 @@ const WorkList: React.FC = () => {
             tab={
               <span>
                 <ClockCircleOutlined />
-                正在进行 ({categorizedAssignments.ongoing.length})
+                正在进行 ({categorizedHomeworks.ongoing.length})
               </span>
             }
             key="ongoing"
           >
-            {categorizedAssignments.ongoing.length === 0 ? (
+            {categorizedHomeworks.ongoing.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0' }}>
                 <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
                 <div style={{ fontSize: '16px', color: '#666' }}>当前没有进行中的作业</div>
@@ -466,7 +533,7 @@ const WorkList: React.FC = () => {
             ) : (
               <Table
                 columns={columns}
-                dataSource={categorizedAssignments.ongoing}
+                dataSource={categorizedHomeworks.ongoing}
                 rowKey="id"
                 loading={loading}
                 pagination={{ pageSize: 10 }}
@@ -479,12 +546,12 @@ const WorkList: React.FC = () => {
             tab={
               <span>
                 <CheckCircleOutlined />
-                已提交 ({categorizedAssignments.submitted.length})
+                已提交 ({categorizedHomeworks.submitted.length})
               </span>
             }
             key="submitted"
           >
-            {categorizedAssignments.submitted.length === 0 ? (
+            {categorizedHomeworks.submitted.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0' }}>
                 <WarningOutlined style={{ fontSize: '48px', color: '#faad14', marginBottom: '16px' }} />
                 <div style={{ fontSize: '16px', color: '#666' }}>暂无已提交的作业</div>
@@ -492,7 +559,7 @@ const WorkList: React.FC = () => {
             ) : (
               <Table
                 columns={columns}
-                dataSource={categorizedAssignments.submitted}
+                dataSource={categorizedHomeworks.submitted}
                 rowKey="id"
                 loading={loading}
                 pagination={{ pageSize: 10 }}
@@ -505,12 +572,12 @@ const WorkList: React.FC = () => {
             tab={
               <span>
                 <WarningOutlined />
-                未提交 ({categorizedAssignments.overdue.length})
+                未提交 ({categorizedHomeworks.overdue.length})
               </span>
             }
             key="overdue"
           >
-            {categorizedAssignments.overdue.length === 0 ? (
+            {categorizedHomeworks.overdue.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0' }}>
                 <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
                 <div style={{ fontSize: '16px', color: '#666' }}>没有逾期未提交的作业</div>
@@ -518,7 +585,7 @@ const WorkList: React.FC = () => {
             ) : (
               <Table
                 columns={columns}
-                dataSource={categorizedAssignments.overdue}
+                dataSource={categorizedHomeworks.overdue}
                 rowKey="id"
                 loading={loading}
                 pagination={{ pageSize: 10 }}
@@ -531,55 +598,154 @@ const WorkList: React.FC = () => {
 
       {/* 作业详情模态框 */}
       <Modal
-        title={selectedAssignment?.name || '作业详情'}
+        title={selectedHomework?.title || '作业详情'}
         visible={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
         width={700}
       >
-        {selectedAssignment && (
+        {selectedHomework && (
           <Descriptions bordered column={1}>
-            <Descriptions.Item label="作业名称">
-              {selectedAssignment.name}
+            <Descriptions.Item label="作业标题">
+              {selectedHomework.title}
+            </Descriptions.Item>
+            <Descriptions.Item label="班级">
+              {selectedHomework.class_code}
+            </Descriptions.Item>
+            <Descriptions.Item label="发布时间">
+              {dayjs(selectedHomework.publish_time).format('YYYY-MM-DD HH:mm')}
             </Descriptions.Item>
             <Descriptions.Item label="截止时间">
-              {dayjs(selectedAssignment.deadline).format('YYYY-MM-DD HH:mm')}
-              {now.isAfter(dayjs(selectedAssignment.deadline)) && (
+              {dayjs(selectedHomework.deadline).format('YYYY-MM-DD HH:mm')}
+              {now.isAfter(dayjs(selectedHomework.deadline)) && (
                 <Tag color="red" style={{ marginLeft: '8px' }}>已截止</Tag>
               )}
             </Descriptions.Item>
-            <Descriptions.Item label="作业要求">
-              <div style={{ whiteSpace: 'pre-wrap' }}>{selectedAssignment.requirements}</div>
+            <Descriptions.Item label="作业描述">
+              <div style={{ whiteSpace: 'pre-wrap' }}>{selectedHomework.description}</div>
             </Descriptions.Item>
-            <Descriptions.Item label="提交状态">
+            <Descriptions.Item label="总分">
+              {selectedHomework.total_score} 分
+            </Descriptions.Item>
+            <Descriptions.Item label="状态">
               <Badge 
-                status={selectedAssignment.status === 'submitted' ? 'success' : 'error'} 
+                status={
+                  selectedHomework.status === 1 ? 'processing' : 
+                  selectedHomework.status === 2 ? 'warning' : 
+                  selectedHomework.status === 3 ? 'success' : 'default'
+                } 
                 text={
-                  selectedAssignment.status === 'submitted' 
-                    ? `已提交 (${dayjs(selectedAssignment.submitTime).format('YYYY-MM-DD HH:mm')})`
-                    : selectedAssignment.status === 'overdue'
-                      ? '已逾期'
-                      : '未提交'
+                  selectedHomework.status === 1 ? '进行中' :
+                  selectedHomework.status === 2 ? '已截止' :
+                  selectedHomework.status === 3 ? '已批改' : '未知'
                 } 
               />
             </Descriptions.Item>
-            {selectedAssignment.status === 'submitted' && (
-              <>
-                <Descriptions.Item label="提交文件">
-                  {selectedAssignment.submittedFiles?.map(file => (
-                    <div key={file} style={{ marginBottom: 8 }}>
-                      <FileOutlined style={{ marginRight: 8 }} />
-                      {file}
-                    </div>
-                  )) || '无'}
-                </Descriptions.Item>
-                <Descriptions.Item label="备注">
-                  {selectedAssignment.remark || '无'}
-                </Descriptions.Item>
-              </>
+            {selectedHomework.attachment_url && (
+              <Descriptions.Item label="附件">
+                <div>
+                  <FileOutlined style={{ marginRight: 8 }} />
+                  <a href={selectedHomework.attachment_url} target="_blank" rel="noopener noreferrer">
+                    查看附件
+                  </a>
+                </div>
+              </Descriptions.Item>
+            )}
+            {selectedHomework.file_name && (
+              <Descriptions.Item label="文件命名格式">
+                {selectedHomework.file_name}
+              </Descriptions.Item>
             )}
           </Descriptions>
         )}
+      </Modal>
+
+      {/* 编辑作业模态框 */}
+      <Modal
+        title="编辑作业"
+        visible={editModalVisible}
+        onCancel={() => setEditModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={handleEditSubmit}
+        >
+          <Form.Item
+            name="title"
+            label="作业标题"
+            rules={[
+              { required: true, message: '请输入作业标题' },
+              { max: 255, message: '标题不能超过255个字符' }
+            ]}
+          >
+            <Input placeholder="请输入作业标题" />
+          </Form.Item>
+
+          <Form.Item
+            name="description"
+            label="作业描述"
+            rules={[
+              { required: true, message: '请输入作业描述' }
+            ]}
+          >
+            <TextArea
+              rows={4}
+              placeholder="请详细描述作业要求、提交方式、评分标准等..."
+              showCount
+              maxLength={2000}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="deadline"
+            label="截止时间"
+            rules={[
+              { required: true, message: '请选择截止时间' }
+            ]}
+          >
+            <DatePicker
+              showTime
+              format="YYYY-MM-DD HH:mm:ss"
+              placeholder="选择截止时间"
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="file_name"
+            label="文件命名格式"
+            rules={[
+              { required: true, message: '请输入文件命名格式' },
+              {
+                pattern: /【学号】|【班级】|【姓名】/,
+                message: '命名格式中必须包含【学号】【班级】【姓名】中的至少一个',
+              },
+            ]}
+          >
+            <Input
+              placeholder="如：【学号】【班级】【姓名】计算机网络实验一"
+              maxLength={255}
+            />
+          </Form.Item>
+
+          <Form.Item>
+            <Space>
+              <Button 
+                type="primary" 
+                htmlType="submit" 
+                loading={editLoading}
+              >
+                确认更新
+              </Button>
+              <Button onClick={() => setEditModalVisible(false)}>
+                取消
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
       </Modal>
 
       {/* 提交作业模态框 */}

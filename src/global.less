@@ -1,0 +1,80 @@
+// 移动端侧边栏优化
+@media (max-width: 768px) {
+  // 确保侧边栏在移动端正确显示
+  .ant-layout-sider {
+    position: fixed !important;
+    height: 100vh !important;
+    z-index: 1000 !important;
+    transition: transform 0.3s ease !important;
+  }
+  
+  // 侧边栏展开时的遮罩层
+  .ant-layout-sider:not(.ant-layout-sider-collapsed) {
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  // 移动端内容区域调整
+  .ant-layout-content {
+    margin-left: 0 !important;
+    padding: 16px !important;
+    transition: margin-left 0.3s ease !important;
+  }
+  
+  // 移动端头部调整
+  .ant-layout-header {
+    padding: 0 16px !important;
+    z-index: 1001 !important;
+  }
+  
+  // 移动端菜单项调整
+  .ant-menu-item {
+    height: 48px !important;
+    line-height: 48px !important;
+  }
+  
+  .ant-menu-submenu-title {
+    height: 48px !important;
+    line-height: 48px !important;
+  }
+  
+  // 移动端折叠按钮优化
+  .ant-layout-sider-trigger {
+    position: fixed !important;
+    top: 50% !important;
+    left: 0 !important;
+    transform: translateY(-50%) !important;
+    z-index: 1002 !important;
+    background: #1890ff !important;
+    color: white !important;
+    border-radius: 0 4px 4px 0 !important;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  // 移动端点击外部区域时的视觉反馈
+  .ant-layout-sider:not(.ant-layout-sider-collapsed) + .ant-layout {
+    position: relative !important;
+  }
+  
+  .ant-layout-sider:not(.ant-layout-sider-collapsed) + .ant-layout::before {
+    content: '' !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    z-index: 999 !important;
+    pointer-events: none !important;
+  }
+}
+
+// 平板端优化
+@media (min-width: 769px) and (max-width: 1024px) {
+  .ant-layout-sider {
+    width: 200px !important;
+  }
+  
+  .ant-layout-content {
+    margin-left: 200px !important;
+  }
+} 

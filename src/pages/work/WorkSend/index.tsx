@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PageContainer } from '@ant-design/pro-components';
 import { 
   Card, 
@@ -34,6 +34,7 @@ import { publishHomework, getClassList, uploadFile, CreateHomeworkRequest, Class
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
+import { history } from '@umijs/max';
 
 interface HomeworkFormData {
   class_code: string;
@@ -53,6 +54,8 @@ const WorkSend: React.FC = () => {
   const [classOptions, setClassOptions] = useState<Array<{ label: string; value: string }>>([]);
   const [uploading, setUploading] = useState(false);
   const { userInfo } = useModel('global');
+  const [fileName, setFileName] = useState('');
+  const inputRef = useRef<any>(null);
 
   // 获取班级列表
   useEffect(() => {
@@ -64,7 +67,7 @@ const WorkSend: React.FC = () => {
       const classes: any[] = await getClassList();
       console.log('获取到的班级数据:', classes);
       
-      const options = classes.map(cls => {
+      let options = classes.map(cls => {
         console.log('处理班级:', cls);
         
         // 支持多种字段名格式
@@ -76,6 +79,11 @@ const WorkSend: React.FC = () => {
           value: classCode
         };
       });
+
+      // 只允许学委选择自己班级
+      if (userInfo?.roleType === 2 && userInfo.classCode) {
+        options = options.filter(opt => opt.value === userInfo.classCode);
+      }
       
       console.log('生成的选项:', options);
       setClassOptions(options);
@@ -141,11 +149,11 @@ const WorkSend: React.FC = () => {
   };
 
   // 提交表单
-  const handleSubmit = async (values: HomeworkFormData) => {
+  const handleSubmit = async (values: HomeworkFormData & { file_name: string }) => {
     setLoading(true);
     try {
       // 处理时间格式
-      const formData: CreateHomeworkRequest = {
+      const formData: CreateHomeworkRequest & { file_name: string } = {
         class_code: values.class_code,
         title: values.title,
         description: values.description,
@@ -154,6 +162,7 @@ const WorkSend: React.FC = () => {
         deadline: values.deadline.format('YYYY-MM-DD HH:mm:ss'),
         total_score: values.total_score,
         status: 1, // 默认状态为进行中
+        file_name: values.file_name,
       };
 
       console.log('提交的作业数据:', formData);
@@ -165,8 +174,7 @@ const WorkSend: React.FC = () => {
       form.resetFields();
       setFileList([]);
       
-      // 可以选择跳转到作业列表页面
-      // history.push('/work/workList');
+      history.push('/work/WorkList');
       
     } catch (error: any) {
       console.error('发布作业失败:', error);
@@ -185,25 +193,24 @@ const WorkSend: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Title level={3} style={{ marginBottom: '24px' }}>
+    <div style={{ 
+      padding: '24px', 
+      maxWidth: '1600px', 
+      margin: '0 auto',
+      minHeight: '100vh'
+    }}>
+      <Title level={3} style={{ marginBottom: '24px', textAlign: 'center' }}>
         <BookOutlined style={{ marginRight: '8px' }} />
         发布作业
       </Title>
 
-      {/* 权限提示 */}
-      <Alert
-        message="权限验证成功"
-        description="您已成功访问发布作业页面，说明您具有学委权限（roleType: 2）"
-        type="success"
-        showIcon
-        style={{ marginBottom: '24px', borderRadius: '8px' }}
-      />
-
       {/* 主要内容卡片 */}
       <Card 
-        bordered={false} 
-        style={{ borderRadius: '8px', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.03)' }}
+        style={{ 
+          borderRadius: '12px', 
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          border: '1px solid #f0f0f0'
+        }}
       >
         <Form
           form={form}
@@ -222,7 +229,7 @@ const WorkSend: React.FC = () => {
               基本信息
             </Title>
             
-            <Row gutter={24}>
+            <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
                   name="class_code"
@@ -279,10 +286,10 @@ const WorkSend: React.FC = () => {
               ]}
             >
               <TextArea 
-                rows={6} 
+                rows={3} 
                 placeholder="请详细描述作业要求、提交方式、评分标准等..."
                 showCount
-                maxLength={2000}
+                maxLength={200}
               />
             </Form.Item>
           </div>
@@ -294,7 +301,7 @@ const WorkSend: React.FC = () => {
               时间设置
             </Title>
 
-            <Row gutter={24}>
+            <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
                   name="publish_time"
@@ -316,8 +323,8 @@ const WorkSend: React.FC = () => {
                   label="截止时间"
                   rules={[
                     { required: true, message: '请选择截止时间' },
-                    ({ getFieldValue }) => ({
-                      validator(_, value) {
+                    ({ getFieldValue }: any) => ({
+                      validator(_: any, value: any) {
                         const publishTime = getFieldValue('publish_time');
                         if (!value || !publishTime || value.isAfter(publishTime)) {
                           return Promise.resolve();
@@ -357,6 +364,84 @@ const WorkSend: React.FC = () => {
               <Text type="secondary" style={{ display: 'block', marginTop: '8px' }}>
                 支持格式：PDF、Word、Excel、PPT、图片等，单个文件不超过10MB
               </Text>
+            </Form.Item>
+          </div>
+
+          {/* 文件命名格式 */}
+          <div style={{ marginBottom: '32px' }}>
+            <Title level={4} style={{ marginBottom: '24px' }}>
+              <FileTextOutlined style={{ marginRight: '8px' }} />
+              文件命名格式
+            </Title>
+            <Form.Item
+              name="file_name"
+              label="文件命名格式"
+              rules={[
+                { required: true, message: '请输入文件命名格式' },
+                {
+                  pattern: /【学号】|【班级】|【姓名】/,
+                  message: '命名格式中必须包含【学号】【班级】【姓名】中的至少一个',
+                },
+              ]}
+            >
+              <>
+                <div style={{ marginBottom: 8 }}>
+                  <Button size="small" onClick={() => {
+                    const input = inputRef.current?.input;
+                    if (!input) return;
+                    const start = input.selectionStart;
+                    const end = input.selectionEnd;
+                    const value = '【学号】';
+                    const newValue = fileName.slice(0, start) + value + fileName.slice(end);
+                    setFileName(newValue);
+                    setTimeout(() => {
+                      input.focus();
+                      input.setSelectionRange(start + value.length, start + value.length);
+                    }, 0);
+                  }}>【学号】</Button>
+                  <Button size="small" onClick={() => {
+                    const input = inputRef.current?.input;
+                    if (!input) return;
+                    const start = input.selectionStart;
+                    const end = input.selectionEnd;
+                    const value = '【班级】';
+                    const newValue = fileName.slice(0, start) + value + fileName.slice(end);
+                    setFileName(newValue);
+                    setTimeout(() => {
+                      input.focus();
+                      input.setSelectionRange(start + value.length, start + value.length);
+                    }, 0);
+                  }} style={{ marginLeft: 8 }}>【班级】</Button>
+                  <Button size="small" onClick={() => {
+                    const input = inputRef.current?.input;
+                    if (!input) return;
+                    const start = input.selectionStart;
+                    const end = input.selectionEnd;
+                    const value = '【姓名】';
+                    const newValue = fileName.slice(0, start) + value + fileName.slice(end);
+                    setFileName(newValue);
+                    setTimeout(() => {
+                      input.focus();
+                      input.setSelectionRange(start + value.length, start + value.length);
+                    }, 0);
+                  }} style={{ marginLeft: 8 }}>【姓名】</Button>
+                  <span style={{ color: '#888', fontSize: 12, marginLeft: 16 }}>
+                    可用变量，点击可插入
+                  </span>
+                </div>
+                <Input
+                  ref={inputRef}
+                  value={fileName}
+                  onChange={e => setFileName(e.target.value)}
+                  onBlur={() => form.setFieldsValue({ file_name: fileName })}
+                  placeholder="如：【学号】【班级】【姓名】计算机网络实验一"
+                  maxLength={255}
+                  autoComplete="off"
+                />
+                <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>
+                  可用变量：【学号】【班级】【姓名】，其余为自定义内容
+                </div>
+              </>
             </Form.Item>
           </div>
 
@@ -401,7 +486,7 @@ const WorkSend: React.FC = () => {
             <Text strong style={{ fontSize: '16px' }}>{userInfo?.realName || '未知用户'}</Text>
             <br />
             <Text type="secondary">
-              学号：{userInfo?.studentId || '-'} | 角色：{userInfo?.roleType === 2 ? '学委' : '-'}
+              学号：{userInfo?.studentId || '-'} | 角色：{userInfo?.roleType === 2 ? '学委' : userInfo?.roleType === 0 ? '管理员' : '-'}
             </Text>
           </div>
         </div>

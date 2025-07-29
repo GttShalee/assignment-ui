@@ -91,7 +91,9 @@ const Login: React.FC = () => {
       updateUserInfo(userInfo);
       
       message.success('登录成功');
-      history.push('/home');
+      
+      // 强制刷新页面以确保权限状态正确更新
+      window.location.href = '/home';
     } catch (error: any) {
       // 优先展示后端返回的 message
       const msg = error?.response?.data?.message || '登录失败';

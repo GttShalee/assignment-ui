@@ -90,8 +90,6 @@ const handleSendCode = async () => {
   }
 };
 
-  // 提交注册
-
   return (
     <div className={styles.container}>
       <Card className={styles.card} hoverable>
@@ -111,8 +109,9 @@ const handleSendCode = async () => {
           onFinish={async (values: any) => {
             try {
               setLoading(true);
-              // 这里调用注册API
-              await registerUser(values);
+              // 不要把 confirmPassword 传给后端
+              const { confirmPassword, ...submitValues } = values;
+              await registerUser(submitValues);
               message.success('注册成功');
               history.push('/user/login');
             } catch (error:any) {
