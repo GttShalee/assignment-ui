@@ -1,3 +1,51 @@
+// 禁止文字选中，提升用户体验
+* {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+// 对于输入框和文本域，允许选中文字
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+// 对于代码块，允许选中文字（方便复制代码）
+pre, code {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+// 对于表格单元格，允许选中文字（方便复制数据）
+td, th {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+// 对于链接文字，允许选中（方便复制链接）
+a {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+// 对于描述列表，允许选中文字
+dd, dt {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
 // 移动端侧边栏优化
 @media (max-width: 768px) {
   // 确保侧边栏在移动端正确显示

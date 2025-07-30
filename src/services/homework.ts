@@ -14,6 +14,8 @@ export interface Homework {
   status: number;
   created_at: string;
   updated_at: string;
+  // 用户提交状态（由后端返回）
+  submission_status?: number; // 0-未提交，1-已提交
 }
 
 export interface CreateHomeworkRequest {
@@ -41,6 +43,37 @@ export interface ClassResponse {
 export interface UploadResponse {
   url: string;
   filename: string;
+}
+
+// 作业提交相关类型
+export interface SubmitHomeworkRequest {
+  homeworkId: number;
+  submissionFileUrl: string;
+  submissionFileName: string;
+  remarks?: string;
+}
+
+export interface SubmitHomeworkFormData {
+  homework_id: number;
+  file?: File;
+  remarks?: string;
+}
+
+export interface HomeworkSubmissionResponse {
+  id: number;
+  studentId: string;
+  classCode: string;
+  homeworkId: number;
+  submissionTime: string;
+  submissionFileUrl: string;
+  submissionFileName: string;
+  submissionStatus: number; // 0-按时提交，1-补交
+  remarks?: string;
+  createdAt: string;
+  updatedAt: string;
+  // 可能包含的用户和作业信息
+  studentName?: string;
+  homeworkTitle?: string;
 }
 
 // 发布作业
@@ -120,16 +153,56 @@ export async function getClassList(): Promise<ClassResponse[]> {
   });
 }
 
+
+
 // 上传文件
 export async function uploadFile(file: File): Promise<UploadResponse> {
   const formData = new FormData();
   formData.append('file', file);
   
-  return request('/api/upload', {
+  return request('/api/upload/homework-attachment', {
     method: 'POST',
     data: formData,
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+  });
+}
+
+// 提交作业（包含文件上传）
+export async function submitHomework(data: SubmitHomeworkFormData): Promise<HomeworkSubmissionResponse> {
+  const formData = new FormData();
+  formData.append('homework_id', data.homework_id.toString());
+  
+  if (data.file) {
+    formData.append('file', data.file);
+  }
+  
+  if (data.remarks) {
+    formData.append('remarks', data.remarks);
+  }
+  
+  return request('/api/homework-submission/submit', {
+    method: 'POST',
+    data: formData,
+  });
+}
+
+// 上传学生作业文件（保留用于兼容性，但建议使用 submitHomework）
+export async function uploadHomeworkFile(file: File, classCode: string, homeworkTitle: string): Promise<UploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  // 生成文件名：班级代码-作业名称-日期时间
+  const now = new Date();
+  const dateStr = now.getFullYear().toString() +
+    (now.getMonth() + 1).toString().padStart(2, '0') +
+    now.getDate().toString().padStart(2, '0') + '_' +
+    now.getHours().toString().padStart(2, '0') +
+    now.getMinutes().toString().padStart(2, '0') +
+    now.getSeconds().toString().padStart(2, '0');
+  
+  const fileName = `${classCode}-${homeworkTitle}-${dateStr}`;
+  
+  return request('/api/upload/homework-attachment', {
+    method: 'POST',
+    data: formData,
   });
 } 

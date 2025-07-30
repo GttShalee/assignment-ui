@@ -28,6 +28,9 @@ export const layout = () => {
   return {
     logo: 'https://raw.githubusercontent.com/GttShalee/Blog-pic/main/rainCat.gif',
     title: 'WorkUpload',
+    onMenuHeaderClick: () => {
+      history.push('/home');
+    },
     menu: {
       locale: false,
       // 菜单配置

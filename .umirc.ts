@@ -1,7 +1,5 @@
 import { defineConfig } from "@umijs/max";
 
-
-
 export default defineConfig({
   antd: {},
   access: {},
@@ -54,8 +52,8 @@ export default defineConfig({
         },
         {
           name: "作业列表",
-          path: "/work/workList",
-          component: "./work/workList",
+          path: "/work/WorkList",
+          component: "./work/WorkList",
         },
         {
           name: "作业记录",

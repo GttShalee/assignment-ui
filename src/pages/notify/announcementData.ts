@@ -16,6 +16,22 @@ export interface Announcement {
 
 export const announcements: Announcement[] = [
   {
+    id: 3,
+    title: '一个大阶段完成',
+    summary: '基本实现了学委用户的发作业功能',
+    updates: [
+      { content: '按照班级发作业', status: 'new' },
+      { content: '删除作业', status: 'new' },
+      { content: '编辑已经发布的作业', status: 'new' },
+      { content: '做了一些可视化管理', status: 'new' },
+      { content: '手机端侧边栏无法折叠', status: 'fixed' },
+    ],
+    date: '2025-07-21 21:22',
+    type: 'success',
+    version: 'v1.0.0',
+    author: 'Shalee'
+  },
+  {
     id: 2,
     title: '前端继续添加页面 后端开始开发',
     summary: '初步实现注册和登录',

@@ -6,7 +6,6 @@ import { history } from '@umijs/max';
 import { NotificationOutlined } from '@ant-design/icons';
 import styles from './index.less';
 import { POEMS } from '@/constants/poem';
-import { Pie } from '@ant-design/charts';
 import { announcements, UpdateItem } from '../notify/announcementData';
 
 function getGreeting() {
@@ -58,49 +57,7 @@ const HomePage: React.FC = () => {
     }
   };
 
-  // 直观显示作业情况的图标
-  const pieData = [
-    { type: '未完成作业', value: 1 },
-    { type: '已完成作业', value: 2 },
-    { type: '处理中', value: 3 },
-    { type: '打回', value: 4 },
-    { type: '', value: 5 },
-    { type: '其他', value: 5 },
-  ];
 
-  // 饼图配置
-  const pieConfig = {
-    data: pieData,
-    angleField: 'value',
-    colorField: 'type',
-    innerRadius: 0.6,
-    label: {
-      text: 'value',
-      style: {
-        fontWeight: 'bold',
-      },
-    },
-    legend: {
-      color: {
-        title: false,
-        position: 'right',
-        rowPadding: 5,
-      },
-    },
-    annotations: [
-      {
-        type: 'text',
-        style: {
-          text: '作业直观图',
-          x: '50%',
-          y: '50%',
-          textAlign: 'center',
-          fontSize: 20,
-          fontStyle: 'bold',
-        },
-      },
-    ],
-  };
 
   return (
     <PageContainer ghost>
@@ -186,18 +143,6 @@ const HomePage: React.FC = () => {
         </div>
         <br />
         <div style={{ fontSize: 16, fontStyle: 'italic', color: '#666', marginBottom: 32 }}>{poem}</div>
-        <div
-          style={{
-            width: 400,
-            maxWidth: '100%',
-            height: 300,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-          }}
-        >
-          <Pie {...pieConfig} style={{ height: 300 }} />
-        </div>
       </div>
     </PageContainer>
   );
