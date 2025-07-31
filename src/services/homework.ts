@@ -76,6 +76,15 @@ export interface HomeworkSubmissionResponse {
   homeworkTitle?: string;
 }
 
+// 作业提交列表响应类型
+export interface HomeworkSubmissionsResponse {
+  content: HomeworkSubmissionResponse[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
 // 发布作业
 export async function publishHomework(data: CreateHomeworkRequest): Promise<Homework> {
   return request('/api/homework', {
@@ -154,7 +163,6 @@ export async function getClassList(): Promise<ClassResponse[]> {
 }
 
 
-
 // 上传文件
 export async function uploadFile(file: File): Promise<UploadResponse> {
   const formData = new FormData();
@@ -163,6 +171,25 @@ export async function uploadFile(file: File): Promise<UploadResponse> {
   return request('/api/upload/homework-attachment', {
     method: 'POST',
     data: formData,
+  });
+}
+
+// 获取作业提交列表
+export async function getHomeworkSubmissions(homeworkId: number, params?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<HomeworkSubmissionsResponse> {
+  return request(`/api/homework-submission/list/${homeworkId}`, {
+    method: 'GET',
+    params,
+  });
+}
+
+// 下载作业提交文件包
+export async function downloadHomeworkSubmissions(homeworkId: number): Promise<Blob> {
+  return request(`/api/homework-submission/${homeworkId}/download`, {
+    method: 'GET',
+    responseType: 'blob',
   });
 }
 

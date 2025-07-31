@@ -3,104 +3,254 @@
 @border: #e5e7eb;
 @text-main: #222;
 @text-sub: #666;
+@success: #52c41a;
+@warning: #faad14;
+@error: #ff4d4f;
 
 .profileWrap {
-  padding: 32px 0;
-  display: flex;
-  justify-content: center;
-  background: #f7fafd;
+  padding: 24px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  min-height: 100vh;
 }
 
-.profileCard {
-  max-width: 800px;
-  margin: 0 auto;
-  border-radius: 12px;
-  box-shadow: 10 2px 16px 0 rgba(59,130,246,0.08);
+// 顶部用户信息卡片
+.headerCard {
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   background: @card-bg;
-  padding: 32px 32px 24px 32px;
+  border: none;
+  margin-bottom: 24px;
+  
+  .ant-card-body {
+    padding: 32px;
+  }
 }
 
-.headerRow {
-  display: flex;
-  align-items: center;
-  margin-bottom: 32px;
+// 头像区域
+.avatarSection {
+  text-align: center;
+  
+  .avatar {
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #60a5fa 0%, #818cf8 100%);
+    color: #fff;
+    font-size: 40px;
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    border: 4px solid #fff;
+  }
+  
+  .avatarActions {
+    .ant-btn {
+      border-radius: 8px;
+      font-size: 12px;
+    }
+  }
 }
 
-.avatar {
-  margin-right: 28px;
-  background: linear-gradient(135deg, #60a5fa 0%, #818cf8 100%);
-  color: #fff;
-  font-size: 32px;
-  font-weight: bold;
-  box-shadow: 0 2px 8px 0 rgba(59,130,246,0.10);
-}
-
-.userInfoText {
-  flex: 1;
-  min-width: 0;
-  h2 {
-    margin: 0 0 4px 0;
-    font-size: 24px;
+// 用户信息区域
+.userInfoSection {
+  .userName {
+    margin: 0 0 12px 0 !important;
     color: @text-main;
     font-weight: 600;
-    letter-spacing: 1px;
-    word-break: break-all;
+    font-size: 28px;
   }
-  p {
-    margin: 0;
-    color: @text-sub;
-    font-size: 15px;
-  }
-}
-
-.buttonGroup {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.editBtn {
-  background: @primary;
-  border-color: @primary;
-  &:hover {
-    background: darken(@primary, 10%);
-    border-color: darken(@primary, 10%);
+  
+  .userMeta {
+    margin-top: 12px;
+    
+    .ant-typography {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
   }
 }
 
-.infoTable {
-  margin-top: 12px;
-  border-radius: 8px;
-  background: #fafbfc;
-  width: 500px; // 设置固定宽度，让表格靠左
-  .ant-table-thead > tr > th {
-    background: #f1f5f9;
-    color: @primary;
+// 操作按钮区域
+.actionSection {
+  .ant-btn {
+    border-radius: 8px;
+    height: 40px;
     font-weight: 500;
-    border-bottom: 1px solid @border;
+    
+    &.ant-btn-primary {
+      background: @primary;
+      border-color: @primary;
+      
+      &:hover {
+        background: darken(@primary, 10%);
+        border-color: darken(@primary, 10%);
+      }
+    }
+    
+    &.ant-btn-dangerous {
+      &:hover {
+        background: darken(@error, 10%);
+        border-color: darken(@error, 10%);
+      }
+    }
   }
+}
+
+// 信息卡片
+.infoCard {
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: none;
+  
+  .ant-card-head {
+    border-bottom: 1px solid @border;
+    padding: 0 24px;
+    
+    .ant-card-head-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: @text-main;
+    }
+  }
+  
+  .ant-card-body {
+    padding: 24px;
+  }
+}
+
+// 统计卡片
+.statsCard {
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: none;
+  height: 100%;
+  
+  .ant-card-head {
+    border-bottom: 1px solid @border;
+    padding: 0 24px;
+    
+    .ant-card-head-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: @text-main;
+    }
+  }
+  
+  .ant-card-body {
+    padding: 24px;
+  }
+  
+  .ant-statistic {
+    .ant-statistic-title {
+      color: @text-sub;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    
+    .ant-statistic-content {
+      font-size: 24px;
+      font-weight: 600;
+      color: @text-main;
+    }
+  }
+}
+
+// 信息表格
+.infoTable {
+  .ant-table-thead > tr > th {
+    background: #f8fafc;
+    color: @primary;
+    font-weight: 600;
+    border-bottom: 1px solid @border;
+    padding: 12px 16px;
+  }
+  
   .ant-table-tbody > tr > td {
-    font-size: 15px;
+    font-size: 14px;
     color: @text-main;
     border-bottom: 1px solid @border;
+    padding: 12px 16px;
+    
+    &:first-child {
+      font-weight: 500;
+      color: @text-sub;
+    }
+  }
+  
+  .ant-table-tbody > tr:hover > td {
+    background: #f8fafc;
   }
 }
 
-.tableLabel {
-  color: @primary;
+// 响应式设计
+@media (max-width: 768px) {
+  .profileWrap {
+    padding: 16px;
+  }
+  
+  .headerCard .ant-card-body {
+    padding: 24px 16px;
+  }
+  
+  .userInfoSection .userName {
+    font-size: 24px;
+  }
+  
+  .actionSection {
+    margin-top: 16px;
+  }
+  
+  .infoCard .ant-card-body,
+  .statsCard .ant-card-body {
+    padding: 16px;
+  }
+}
+
+// 标签样式
+.ant-tag {
+  border-radius: 6px;
   font-weight: 500;
+  padding: 4px 8px;
+  
+  &.ant-tag-red {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+  }
+  
+  &.ant-tag-blue {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #2563eb;
+  }
+  
+  &.ant-tag-green {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #16a34a;
+  }
 }
 
-.tableValue {
-  color: @text-main;
+// 分割线样式
+.ant-divider {
+  margin: 16px 0;
+  border-color: @border;
 }
 
-.nameRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  h2, p {
-    margin: 0;
-    white-space: nowrap;
+// 模态框样式
+.ant-modal {
+  .ant-modal-header {
+    border-bottom: 1px solid @border;
+    
+    .ant-modal-title {
+      font-weight: 600;
+    }
+  }
+  
+  .ant-modal-body {
+    padding: 24px;
+  }
+  
+  .ant-modal-footer {
+    border-top: 1px solid @border;
+    padding: 16px 24px;
   }
 } 

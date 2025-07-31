@@ -63,6 +63,22 @@ export default defineConfig({
       ]
     },
     {
+      name:"我的班级",
+      path:"/Class",
+      routes: [
+        {
+          name: "班级空间",
+          path:"/Class/ClassRoom",
+          component:"./Class/ClassRoom",
+        },
+        {
+          name: "班级广场",
+          path:"/Class/ClassSquare",
+          component:"./Class/ClassSquare",
+        },
+      ]
+    },
+    {
       name: "个人主页",
       path: "User/Profile",
       component: "./User/Profile"

@@ -54,7 +54,7 @@ export const layout = () => {
 
 // 请求拦截器配置
 export const request = {
-  timeout: 10000,
+  timeout: 30000, // 增加超时时间，特别是文件上传
   errorConfig: {
     errorHandler: (error: any) => {
       console.error('请求错误:', error);
@@ -70,6 +70,12 @@ export const request = {
           'Authorization': `Bearer ${token}`,
         };
       }
+      
+      // 对于文件上传，不设置Content-Type，让浏览器自动设置
+      if (config.data instanceof FormData) {
+        delete config.headers['Content-Type'];
+      }
+      
       return config;
     },
   ],

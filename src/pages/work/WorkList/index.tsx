@@ -37,7 +37,7 @@ import type { UploadFile, RcFile } from 'antd/es/upload/interface';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { getHomeworkList, deleteHomework, updateHomework, submitHomework, uploadHomeworkFile, SubmitHomeworkFormData } from '@/services/homework';
+import { getHomeworkList, deleteHomework, updateHomework, submitHomework, uploadHomeworkFile, SubmitHomeworkFormData, getHomeworkSubmissions, downloadHomeworkSubmissions } from '@/services/homework';
 import { getToken } from '@/services/auth';
 import { useModel } from '@umijs/max';
 
@@ -51,7 +51,7 @@ const { TextArea } = Input;
 const { Countdown } = Statistic;
 
 // 导入后端接口类型
-import { Homework } from '@/services/homework';
+import { Homework, HomeworkSubmissionResponse } from '@/services/homework';
 
 const WorkList: React.FC = () => {
   const { userInfo } = useModel('global');
@@ -80,6 +80,12 @@ const WorkList: React.FC = () => {
     correctedFileName?: string;
   } | null>(null);
 
+  // 查看提交作业相关状态
+  const [submissionsModalVisible, setSubmissionsModalVisible] = useState(false);
+  const [currentViewingHomework, setCurrentViewingHomework] = useState<Homework | null>(null);
+  const [submissions, setSubmissions] = useState<HomeworkSubmissionResponse[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+
   // 每秒更新当前时间
   useEffect(() => {
     const timer = setInterval(() => {
@@ -107,6 +113,19 @@ const WorkList: React.FC = () => {
       homework.status === 1 && 
       now.isAfter(dayjs(homework.deadline)) &&
       homework.submission_status !== 1
+    ),
+    
+    // 已截止作业（状态为2或3，或者已超过截止时间但未超过3天）
+    expired: homeworks.filter(homework => 
+      (homework.status === 2 || 
+       homework.status === 3 || 
+       now.isAfter(dayjs(homework.deadline))) &&
+      now.isBefore(dayjs(homework.deadline).add(3, 'day'))
+    ),
+    
+    // 归档作业（超过截止时间3天）
+    archived: homeworks.filter(homework => 
+      now.isAfter(dayjs(homework.deadline).add(3, 'day'))
     )
   };
 
@@ -114,7 +133,9 @@ const WorkList: React.FC = () => {
   console.log('分类结果:', {
     ongoing: categorizedHomeworks.ongoing.map(hw => ({ id: hw.id, title: hw.title, submission_status: hw.submission_status })),
     submitted: categorizedHomeworks.submitted.map(hw => ({ id: hw.id, title: hw.title, submission_status: hw.submission_status })),
-    overdue: categorizedHomeworks.overdue.map(hw => ({ id: hw.id, title: hw.title, submission_status: hw.submission_status }))
+    overdue: categorizedHomeworks.overdue.map(hw => ({ id: hw.id, title: hw.title, submission_status: hw.submission_status })),
+    expired: categorizedHomeworks.expired.map(hw => ({ id: hw.id, title: hw.title, status: hw.status, deadline: hw.deadline })),
+    archived: categorizedHomeworks.archived.map(hw => ({ id: hw.id, title: hw.title, status: hw.status, deadline: hw.deadline }))
   });
 
   // 获取作业列表
@@ -222,9 +243,9 @@ const WorkList: React.FC = () => {
       const validation = validateAndTransformFileName(file.name, currentHomework, userInfo);
       setFileNameValidation(validation);
       
-      if (!validation.isValid) {
-        message.warning(`文件名格式不正确，建议使用：${validation.correctedFileName}`);
-      }
+      // if (!validation.isValid) {
+      //   message.warning(`文件名格式不正确，建议使用：${validation.correctedFileName}`);
+      // }
     }
 
     // 返回 false 阻止自动上传，但允许文件添加到列表中
@@ -352,6 +373,73 @@ const WorkList: React.FC = () => {
     }
     
     return false;
+  };
+
+  // 查看作业提交
+  const handleViewSubmissions = async (homework: Homework) => {
+    setCurrentViewingHomework(homework);
+    setSubmissionsModalVisible(true);
+    setSubmissionsLoading(true);
+    
+    try {
+      const response = await getHomeworkSubmissions(homework.id);
+      console.log('作业提交列表响应:', response);
+      console.log('提交数据:', response.content);
+      
+      // 处理可能的字段名映射问题
+      const processedSubmissions = (response.content || []).map(submission => {
+        const anySubmission = submission as any; // 使用类型断言处理可能的字段名差异
+        return {
+          ...submission,
+          // 处理可能的字段名差异
+          studentId: submission.studentId || anySubmission.student_id,
+          studentName: submission.studentName || anySubmission.student_name || anySubmission.realName || anySubmission.real_name,
+          classCode: submission.classCode || anySubmission.class_code,
+          submissionTime: submission.submissionTime || anySubmission.submission_time,
+          submissionFileName: submission.submissionFileName || anySubmission.submission_file_name,
+          submissionFileUrl: submission.submissionFileUrl || anySubmission.submission_file_url,
+          submissionStatus: submission.submissionStatus || anySubmission.submission_status,
+        };
+      });
+      
+      console.log('处理后的提交数据:', processedSubmissions);
+      setSubmissions(processedSubmissions);
+    } catch (error) {
+      message.error('获取作业提交列表失败');
+      console.error('获取作业提交列表错误:', error);
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  };
+
+  // 下载作业提交包
+  const handleDownloadSubmissions = async (homeworkId: number) => {
+    try {
+      setSubmissionsLoading(true);
+      const blob = await downloadHomeworkSubmissions(homeworkId);
+      
+      // 创建下载链接
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `作业提交_${currentViewingHomework?.title || 'unknown'}.zip`;
+      link.style.display = 'none';
+      
+      // 添加到DOM并触发点击
+      document.body.appendChild(link);
+      link.click();
+      
+      // 清理DOM和URL对象
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      message.success('开始下载作业提交包');
+    } catch (error) {
+      message.error('下载失败，请稍后重试');
+      console.error('下载作业提交包失败:', error);
+    } finally {
+      setSubmissionsLoading(false);
+    }
   };
 
   // 下载附件
@@ -504,9 +592,38 @@ const WorkList: React.FC = () => {
     return `${days}天 ${hours}小时`;
   };
 
+  // 格式化归档时间显示
+  const formatArchivedTime = (deadline: string) => {
+    const deadlineTime = dayjs(deadline);
+    const archivedTime = deadlineTime.add(3, 'day');
+    const diff = now.diff(archivedTime);
+    
+    if (diff <= 0) {
+      return '未归档';
+    }
+    
+    const duration = dayjs.duration(diff);
+    const days = duration.days();
+    const months = duration.months();
+    const years = duration.years();
+    
+    if (years > 0) {
+      return `归档 ${years}年${months}个月${days}天`;
+    } else if (months > 0) {
+      return `归档 ${months}个月${days}天`;
+    } else {
+      return `归档 ${days}天`;
+    }
+  };
+
   // 获取状态标签
   const getStatusTag = (status: number, deadline: string) => {
     const isOverdue = now.isAfter(dayjs(deadline));
+    const isArchived = now.isAfter(dayjs(deadline).add(3, 'day'));
+    
+    if (isArchived) {
+      return <Tag color="gray">已归档</Tag>;
+    }
     
     if (status === 1 && isOverdue) {
       return <Tag color="red">已逾期</Tag>;
@@ -585,36 +702,56 @@ const WorkList: React.FC = () => {
       key: 'timeLeft',
       width: 180,
       render: (_, record) => {
-        if (record.status !== 1) return '-';
-        
         const deadline = dayjs(record.deadline);
+        const isArchived = now.isAfter(deadline.add(3, 'day'));
         
-        if (now.isAfter(deadline)) {
-          return `逾期 ${deadline.fromNow(true)}`;
+        // 如果是归档的作业，显示归档时间
+        if (isArchived) {
+          return (
+            <div style={{ color: '#8c8c8c' }}>
+              <FileOutlined style={{ marginRight: 8 }} />
+              {formatArchivedTime(record.deadline)}
+            </div>
+          );
         }
         
-        const diff = deadline.diff(now);
-        const duration = dayjs.duration(diff);
-        const days = duration.days();
-        const hours = duration.hours();
-        
-        // 24小时内的显示精确到秒
-        if (days === 0 && hours < 24) {
+        // 如果作业已截止但未归档
+        if (now.isAfter(deadline)) {
           return (
-            <div style={{ color: '#faad14' }}>
+            <div style={{ color: '#ff4d4f' }}>
+              <ClockCircleOutlined style={{ marginRight: 8 }} />
+              逾期 {deadline.fromNow(true)}
+            </div>
+          );
+        }
+        
+        // 如果作业还在进行中
+        if (record.status === 1) {
+          const diff = deadline.diff(now);
+          const duration = dayjs.duration(diff);
+          const days = duration.days();
+          const hours = duration.hours();
+          
+          // 24小时内的显示精确到秒
+          if (days === 0 && hours < 24) {
+            return (
+              <div style={{ color: '#faad14' }}>
+                <ClockCircleOutlined style={{ marginRight: 8 }} />
+                {formatRemainingTime(record.deadline)}
+              </div>
+            );
+          }
+          
+          // 超过24小时的显示天和小时
+          return (
+            <div style={{ color: '#52c41a' }}>
               <ClockCircleOutlined style={{ marginRight: 8 }} />
               {formatRemainingTime(record.deadline)}
             </div>
           );
         }
         
-        // 超过24小时的显示天和小时
-        return (
-          <div style={{ color: '#52c41a' }}>
-            <ClockCircleOutlined style={{ marginRight: 8 }} />
-            {formatRemainingTime(record.deadline)}
-          </div>
-        );
+        return '-';
       },
     },
     {
@@ -696,6 +833,20 @@ const WorkList: React.FC = () => {
                 删除
               </Button>
             )}
+            
+            {/* 查看提交作业按钮 - 只有管理员或学委可以看到，且作业已截止但未归档 */}
+            {(userInfo?.roleType === 0 || userInfo?.roleType === 2) && 
+             (record.status === 2 || record.status === 3 || now.isAfter(dayjs(record.deadline))) &&
+             now.isBefore(dayjs(record.deadline).add(3, 'day')) && (
+              <Button 
+                type="default"
+                icon={<EyeOutlined />}
+                onClick={() => handleViewSubmissions(record)}
+                title="查看学生提交的作业"
+              >
+                查看提交
+              </Button>
+            )}
           </Space>
         );
       },
@@ -717,24 +868,43 @@ const WorkList: React.FC = () => {
           tabBarStyle={{ marginBottom: 0 }}
           tabBarExtraContent={
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{ marginRight: '24px' }}>
+              <div style={{ marginRight: '0px' }}>
                 <Text type="secondary">总计:</Text> 
                 <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>{homeworks.length}</span>
               </div>
               <Divider type="vertical" style={{ height: '24px' }} />
-              <div style={{ margin: '0 24px' }}>
+              <div style={{ margin: '0 0px' }}>
                 <Text type="secondary">待提交:</Text> 
                 <span style={{ marginLeft: '8px', fontWeight: 'bold', color: '#fa8c16' }}>
                   {categorizedHomeworks.ongoing.length + categorizedHomeworks.overdue.length}
                 </span>
               </div>
               <Divider type="vertical" style={{ height: '24px' }} />
-              <div style={{ marginLeft: '24px' }}>
+              <div style={{ margin: '0 0px' }}>
                 <Text type="secondary">已提交:</Text> 
                 <span style={{ marginLeft: '8px', fontWeight: 'bold', color: '#1890ff' }}>
                   {categorizedHomeworks.submitted.length}
                 </span>
               </div>
+              {/* 只有学委和管理员显示已截止和归档统计 */}
+              {(userInfo?.roleType === 0 || userInfo?.roleType === 2) && (
+                <>
+                  <Divider type="vertical" style={{ height: '24px' }} />
+                  <div style={{ margin: '0 0px' }}>
+                    <Text type="secondary">已截止:</Text> 
+                    <span style={{ marginLeft: '8px', fontWeight: 'bold', color: '#ff4d4f' }}>
+                      {categorizedHomeworks.expired.length}
+                    </span>
+                  </div>
+                  <Divider type="vertical" style={{ height: '24px' }} />
+                  <div style={{ marginLeft: '0px' }}>
+                    <Text type="secondary">归档:</Text> 
+                    <span style={{ marginLeft: '8px', fontWeight: 'bold', color: '#8c8c8c' }}>
+                      {categorizedHomeworks.archived.length}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           }
         >
@@ -815,6 +985,64 @@ const WorkList: React.FC = () => {
                />
             )}
           </TabPane>
+
+          {/* 已截止作业Tab - 只有学委和管理员可以看到 */}
+          {(userInfo?.roleType === 0 || userInfo?.roleType === 2) && (
+            <TabPane
+              tab={
+                <span>
+                  <ClockCircleOutlined />
+                  已截止 ({categorizedHomeworks.expired.length})
+                </span>
+              }
+              key="expired"
+            >
+              {categorizedHomeworks.expired.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                  <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
+                  <div style={{ fontSize: '16px', color: '#666' }}>没有已截止的作业</div>
+                </div>
+              ) : (
+                <Table
+                  columns={columns}
+                  dataSource={categorizedHomeworks.expired}
+                  rowKey="id"
+                  loading={loading}
+                  pagination={{ pageSize: 10 }}
+                  scroll={{ x: 1200 }}
+                />
+              )}
+            </TabPane>
+          )}
+
+          {/* 归档作业Tab - 只有学委和管理员可以看到 */}
+          {(userInfo?.roleType === 0 || userInfo?.roleType === 2) && (
+            <TabPane
+              tab={
+                <span>
+                  <FileOutlined />
+                  归档 ({categorizedHomeworks.archived.length})
+                </span>
+              }
+              key="archived"
+            >
+              {categorizedHomeworks.archived.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                  <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
+                  <div style={{ fontSize: '16px', color: '#666' }}>没有归档的作业</div>
+                </div>
+              ) : (
+                <Table
+                  columns={columns}
+                  dataSource={categorizedHomeworks.archived}
+                  rowKey="id"
+                  loading={loading}
+                  pagination={{ pageSize: 10 }}
+                  scroll={{ x: 1200 }}
+                />
+              )}
+            </TabPane>
+          )}
         </Tabs>
       </Card>
 
@@ -1011,12 +1239,7 @@ const WorkList: React.FC = () => {
                 description={
                   !fileNameValidation.isValid && fileNameValidation.correctedFileName && (
                     <div>
-                      <div>建议的文件名：<strong>{fileNameValidation.correctedFileName}</strong></div>
-                      {currentHomework?.file_name && (
-                        <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>
-                          命名格式：{currentHomework.file_name}
-                        </div>
-                      )}
+                      <div>系统已经自动帮你修改为正确格式：<br></br> <strong>{fileNameValidation.correctedFileName}</strong></div>
                     </div>
                   )
                 }
@@ -1036,12 +1259,12 @@ const WorkList: React.FC = () => {
           <Form.Item
             name="remark"
             label="备注"
-            rules={[{ max: 500, message: '备注不能超过500字' }]}
+            rules={[{ max: 100, message: '备注不能超过500字' }]}
           >
             <TextArea
-              rows={4}
+              rows={1}
               placeholder="可在此添加作业说明或备注信息（可选）"
-              maxLength={500}
+              maxLength={100}
               showCount
             />
           </Form.Item>
@@ -1062,6 +1285,130 @@ const WorkList: React.FC = () => {
             </Space>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 查看作业提交模态框 */}
+      <Modal
+        title={`查看作业提交 - ${currentViewingHomework?.title || ''}`}
+        visible={submissionsModalVisible}
+        onCancel={() => setSubmissionsModalVisible(false)}
+        footer={[
+          <Button key="debug" onClick={() => {
+            console.log('当前提交数据:', submissions);
+            console.log('当前查看的作业:', currentViewingHomework);
+          }}>
+            调试数据
+          </Button>,
+          <Button key="download" type="primary" onClick={() => handleDownloadSubmissions(currentViewingHomework?.id || 0)} loading={submissionsLoading}>
+            打包下载
+          </Button>,
+          <Button key="close" onClick={() => setSubmissionsModalVisible(false)}>
+            关闭
+          </Button>
+        ]}
+        width={1000}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Space>
+            <Text strong>作业标题：</Text>
+            <Text>{currentViewingHomework?.title}</Text>
+            <Divider type="vertical" />
+            <Text strong>截止时间：</Text>
+            <Text>{currentViewingHomework?.deadline ? dayjs(currentViewingHomework.deadline).format('YYYY-MM-DD HH:mm') : '-'}</Text>
+            <Divider type="vertical" />
+            <Text strong>提交数量：</Text>
+            <Text type="success">{submissions.length} 份</Text>
+          </Space>
+        </div>
+        
+        <Table
+          columns={[
+            {
+              title: '学号',
+              dataIndex: 'studentId',
+              key: 'studentId',
+              width: 130,
+              render: (text, record) => {
+                console.log('渲染学号:', text, record);
+                return text || '未知';
+              },
+            },
+            {
+              title: '姓名',
+              dataIndex: 'studentName',
+              key: 'studentName',
+              width: 100,
+              render: (text, record) => {
+                console.log('渲染姓名:', text, record);
+                return text || '未知';
+              },
+            },
+            {
+              title: '班级',
+              dataIndex: 'classCode',
+              key: 'classCode',
+              width: 120,
+              render: (text, record) => {
+                console.log('渲染班级:', text, record);
+                return text || '未知';
+              },
+            },
+            {
+              title: '提交时间',
+              dataIndex: 'submissionTime',
+              key: 'submissionTime',
+              width: 180,
+              render: (text) => dayjs(text).format('YYYY-MM-DD HH:mm:ss'),
+            },
+            {
+              title: '文件名',
+              dataIndex: 'submissionFileName',
+              key: 'submissionFileName',
+              ellipsis: true,
+              render: (text, record) => {
+                console.log('渲染文件名:', text, record);
+                return text || '未知文件';
+              },
+            },
+            {
+              title: '提交状态',
+              dataIndex: 'submissionStatus',
+              key: 'submissionStatus',
+              width: 100,
+              render: (status) => (
+                <Tag color={status === 0 ? 'green' : 'orange'}>
+                  {status === 0 ? '按时提交' : '补交'}
+                </Tag>
+              ),
+            },
+            {
+              title: '备注',
+              dataIndex: 'remarks',
+              key: 'remarks',
+              ellipsis: true,
+              render: (text) => text || '-',
+            },
+            {
+              title: '操作',
+              key: 'action',
+              width: 120,
+              render: (_, record) => (
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => handleDownloadAttachment(record.submissionFileUrl)}
+                >
+                  下载
+                </Button>
+              ),
+            },
+          ]}
+          dataSource={submissions}
+          rowKey="id"
+          loading={submissionsLoading}
+          pagination={{ pageSize: 10 }}
+          scroll={{ x: 800 }}
+        />
       </Modal>
     </div>
   );

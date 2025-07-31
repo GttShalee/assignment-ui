@@ -172,3 +172,55 @@ export function convertLoginResponseToUserInfo(response: any): UserInfo {
     updatedAt: response.updatedAt,
   };
 }
+
+// 更换头像接口
+export async function changeAvatar(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  try {
+    const response = await request('/api/auth/change_avatar', {
+      method: 'POST',
+      data: formData,
+    });
+    
+    // 如果返回的是字符串（头像URL），直接返回
+    if (typeof response === 'string') {
+      return response;
+    }
+    
+    // 如果返回的是对象，可能包含错误信息
+    if (response && typeof response === 'object') {
+      throw new Error(response.message || '上传失败');
+    }
+    
+    return response;
+  } catch (error: any) {
+    // 处理错误响应
+    if (error.response) {
+      const errorMessage = error.response.data || error.response.statusText || '上传失败';
+      throw new Error(errorMessage);
+    }
+    
+    // 处理网络错误
+    if (error.message) {
+      throw new Error(error.message);
+    }
+    
+    throw new Error('网络错误，请检查网络连接');
+  }
+}
+
+// 更新密码接口
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+  verificationCode: string;
+}
+
+export async function changePassword(data: ChangePasswordRequest): Promise<string> {
+  return request('/api/auth/change_passwd', {
+    method: 'POST',
+    data,
+  });
+}
