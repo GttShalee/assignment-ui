@@ -76,6 +76,26 @@ export interface HomeworkSubmissionResponse {
   homeworkTitle?: string;
 }
 
+// 未提交成员类型
+export interface UnsubmittedMember {
+  id: number;
+  student_id: string;
+  real_name: string;
+  class_code?: string;
+  email?: string;
+  role_type?: number;
+  created_at?: string;
+}
+
+// 未提交成员列表响应类型
+export interface UnsubmittedMembersResponse {
+  content: UnsubmittedMember[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
 // 作业提交列表响应类型
 export interface HomeworkSubmissionsResponse {
   content: HomeworkSubmissionResponse[];
@@ -231,5 +251,23 @@ export async function uploadHomeworkFile(file: File, classCode: string, homework
   return request('/api/upload/homework-attachment', {
     method: 'POST',
     data: formData,
+  });
+}
+
+// 获取未提交作业的成员列表
+export async function getUnsubmittedMembers(homeworkId: number, params?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<UnsubmittedMembersResponse> {
+  return request(`/api/homework-submission/homework/${homeworkId}/unsubmitted-members`, {
+    method: 'GET',
+    params,
+  });
+}
+
+// 撤回作业提交
+export async function withdrawHomework(homeworkId: number): Promise<void> {
+  return request(`/api/homework-submission/homework/${homeworkId}/withdraw`, {
+    method: 'DELETE',
   });
 } 

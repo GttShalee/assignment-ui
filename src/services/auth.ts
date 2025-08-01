@@ -33,13 +33,23 @@ export interface LoginResponse {
  * @param email 邮箱地址
  */
 export async function sendEmailCode(email: string) {
-  return request('/api/auth/send-code', {
-    method: 'POST',
-    data: { email },
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  console.log('sendEmailCode函数被调用，邮箱:', email);
+  
+  try {
+    const response = await request('/api/auth/send-code', {
+      method: 'POST',
+      data: { email },
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    console.log('sendEmailCode响应:', response);
+    return response;
+  } catch (error: any) {
+    console.error('sendEmailCode错误:', error);
+    throw error;
+  }
 }
 
 /**
@@ -112,13 +122,28 @@ export async function loginEmail(data: {
  * @returns 用户信息
  */
 export async function getCurrentUser(): Promise<UserInfo> {
-  return request('/api/auth/me', {
+  const response = await request('/api/auth/me', {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${localStorage.getItem('token')}`,
     },
   });
+  
+  // 转换响应数据，确保字段名一致
+  return {
+    id: response.id?.toString() || '',
+    realName: response.realName,
+    avatarUrl: response.avatarUrl || response.avatar_url || '', // 兼容两种字段名
+    studentId: response.studentId,
+    email: response.email,
+    classCode: response.classCode,
+    role: response.role,
+    roleType: response.roleType,
+    status: response.status,
+    createdAt: response.createdAt,
+    updatedAt: response.updatedAt,
+  };
 }
 
 /**
@@ -179,10 +204,19 @@ export async function changeAvatar(file: File): Promise<string> {
   formData.append('file', file);
   
   try {
+    console.log('开始调用头像上传接口，文件信息:', {
+      name: file.name,
+      size: file.size,
+      type: file.type
+    });
+    
     const response = await request('/api/auth/change_avatar', {
       method: 'POST',
       data: formData,
+      // 对于 FormData，不设置 Content-Type，让浏览器自动设置
     });
+    
+    console.log('头像上传接口响应:', response);
     
     // 如果返回的是字符串（头像URL），直接返回
     if (typeof response === 'string') {
@@ -196,9 +230,12 @@ export async function changeAvatar(file: File): Promise<string> {
     
     return response;
   } catch (error: any) {
+    console.error('头像上传接口错误:', error);
+    
     // 处理错误响应
     if (error.response) {
-      const errorMessage = error.response.data || error.response.statusText || '上传失败';
+      console.error('错误响应详情:', error.response);
+      const errorMessage = error.response.data?.message || error.response.data || error.response.statusText || '上传失败';
       throw new Error(errorMessage);
     }
     
@@ -213,14 +250,27 @@ export async function changeAvatar(file: File): Promise<string> {
 
 // 更新密码接口
 export interface ChangePasswordRequest {
-  oldPassword: string;
+  email: string;
   newPassword: string;
   verificationCode: string;
 }
 
 export async function changePassword(data: ChangePasswordRequest): Promise<string> {
-  return request('/api/auth/change_passwd', {
-    method: 'POST',
-    data,
-  });
+  console.log('changePassword函数被调用，参数:', data);
+  
+  try {
+    const response = await request('/api/auth/change_passwd', {
+      method: 'POST',
+      data,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    console.log('changePassword响应:', response);
+    return response;
+  } catch (error: any) {
+    console.error('changePassword错误:', error);
+    throw error;
+  }
 }

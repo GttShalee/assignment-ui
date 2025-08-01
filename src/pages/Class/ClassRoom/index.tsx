@@ -23,6 +23,8 @@ import {
 } from '@ant-design/icons';
 import { useModel } from '@umijs/max';
 import { getClassMembers, ClassMember } from '@/services/classroom';
+import { getFullAvatarUrl } from '@/utils/avatar';
+import { CLASS_CODE_MAP, ROLE_TYPE_MAP } from '@/constants/config';
 
 const { Title, Text } = Typography;
 const { Search } = Input;
@@ -86,23 +88,17 @@ const ClassRoom: React.FC = () => {
   const getRoleTag = (roleType: number) => {
     switch (roleType) {
       case 0:
-        return <Tag color="red" icon={<CrownOutlined />}>管理员</Tag>;
+        return <Tag color="red" icon={<CrownOutlined />}>{ROLE_TYPE_MAP[0]}</Tag>;
       case 2:
-        return <Tag color="blue" icon={<CrownOutlined />}>学委</Tag>;
+        return <Tag color="blue" icon={<CrownOutlined />}>{ROLE_TYPE_MAP[2]}</Tag>;
       default:
-        return <Tag color="green">学生</Tag>;
+        return <Tag color="green">{ROLE_TYPE_MAP[1]}</Tag>;
     }
   };
 
   // 获取班级名称
   const getClassName = (classCode: string) => {
-    const classCodeMap: { [key: string]: string } = {
-      '1234': '计科23-1',
-      '2005': '计科23-2', 
-      '1111': '计科23-3',
-      '8888': '计科智能'
-    };
-    return classCodeMap[classCode] || classCode;
+    return CLASS_CODE_MAP[classCode] || classCode;
   };
 
   return (
@@ -147,16 +143,16 @@ const ClassRoom: React.FC = () => {
                   renderItem={(member) => (
                     <List.Item>
                       <List.Item.Meta
-                                                 avatar={
-                           <Avatar 
-                             size={48}
-                             src={member.avatarUrl}
-                             icon={<UserOutlined />}
-                             onError={() => false}
-                           >
-                             {member.realName?.charAt(0)?.toUpperCase()}
-                           </Avatar>
-                         }
+                                                                         avatar={
+                          <Avatar 
+                            size={48}
+                            src={getFullAvatarUrl(member.avatarUrl)}
+                            icon={<UserOutlined />}
+                            onError={() => false}
+                          >
+                            {member.realName?.charAt(0)?.toUpperCase()}
+                          </Avatar>
+                        }
                                                  title={
                            <Space>
                              <Text strong>{member.realName || '未知用户'}</Text>

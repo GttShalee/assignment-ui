@@ -37,7 +37,9 @@ import {
   KeyOutlined
 } from '@ant-design/icons';
 import { useModel } from '@umijs/max';
-import { changeAvatar, changePassword, ChangePasswordRequest } from '@/services/auth';
+import { changeAvatar, changePassword, ChangePasswordRequest, sendEmailCode } from '@/services/auth';
+import { getFullAvatarUrl } from '@/utils/avatar';
+import { AVATAR_CONFIG, CLASS_CODE_MAP, ROLE_TYPE_MAP } from '@/constants/config';
 import styles from './index.less';
 
 const { Title, Text } = Typography;
@@ -75,7 +77,9 @@ const UserProfile: React.FC = () => {
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [fileValidationStatus, setFileValidationStatus] = useState<'valid' | 'invalid' | 'none'>('none');
   const [passwordForm] = Form.useForm();
 
   // 强制刷新用户信息
@@ -116,6 +120,15 @@ const UserProfile: React.FC = () => {
 
   // 上传头像
   const handleAvatarUpload = async () => {
+    console.log('头像上传开始，文件列表:', fileList);
+    console.log('文件列表详情:', fileList.map(f => ({
+      name: f.name,
+      size: f.size,
+      type: f.type,
+      uid: f.uid,
+      originFileObj: !!f.originFileObj
+    })));
+    
     if (fileList.length === 0) {
       message.error('请选择头像文件');
       return;
@@ -123,17 +136,24 @@ const UserProfile: React.FC = () => {
 
     const file = fileList[0].originFileObj;
     if (!file) {
+      console.error('文件对象为空，fileList[0]:', fileList[0]);
       message.error('文件上传失败');
       return;
     }
 
-    // 验证文件类型
+    console.log('准备上传的文件:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified
+    });
+
+    // 前端验证（与后端保持一致）
     if (!file.type.startsWith('image/')) {
       message.error('只能上传图片文件');
       return;
     }
 
-    // 验证文件大小（5MB）
     if (file.size > 5 * 1024 * 1024) {
       message.error('头像文件大小不能超过5MB');
       return;
@@ -141,11 +161,14 @@ const UserProfile: React.FC = () => {
 
     setUploading(true);
     try {
-      console.log('开始上传头像文件:', {
-        name: file.name,
-        size: file.size,
-        type: file.type
-      });
+      console.log('开始调用changeAvatar函数');
+      
+      // 测试网络连接
+      const networkOk = await testNetworkConnection();
+      if (!networkOk) {
+        message.error('网络连接失败，请检查网络设置');
+        return;
+      }
 
       const avatarUrl = await changeAvatar(file);
       
@@ -160,8 +183,23 @@ const UserProfile: React.FC = () => {
     } catch (error: any) {
       console.error('头像上传失败:', error);
       
-      // 显示具体的错误信息
-      const errorMessage = error.message || '头像更换失败，请重试';
+      // 根据后端错误代码显示具体错误信息
+      let errorMessage = '头像更换失败，请重试';
+      
+      if (error.message) {
+        if (error.message.includes('AVATAR-001')) {
+          errorMessage = '请选择头像文件';
+        } else if (error.message.includes('AVATAR-002')) {
+          errorMessage = '只能上传图片文件';
+        } else if (error.message.includes('AVATAR-003')) {
+          errorMessage = '头像文件大小不能超过5MB';
+        } else if (error.message.includes('AVATAR-004')) {
+          errorMessage = '保存头像文件失败，请重试';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       message.error(errorMessage);
       
       // 如果是认证相关错误，可能需要重新登录
@@ -176,22 +214,85 @@ const UserProfile: React.FC = () => {
     }
   };
 
+  // 测试网络连接
+  const testNetworkConnection = async () => {
+    try {
+      console.log('测试网络连接...');
+      const response = await fetch('/api/auth/me', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log('网络连接测试响应:', response.status, response.statusText);
+      return response.ok;
+    } catch (error) {
+      console.error('网络连接测试失败:', error);
+      return false;
+    }
+  };
+
+  // 发送验证码
+  const handleSendCode = async () => {
+    if (!userInfo?.email) {
+      message.error('用户邮箱信息缺失');
+      return;
+    }
+    
+    console.log('开始发送验证码到邮箱:', userInfo.email);
+    
+    setSendingCode(true);
+    try {
+      await sendEmailCode(userInfo.email);
+      message.success('验证码已发送至您的邮箱');
+    } catch (error: any) {
+      console.error('发送验证码失败:', error);
+      const errorMessage = error.message || '发送验证码失败，请重试';
+      message.error(errorMessage);
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
   // 更新密码
   const handlePasswordSubmit = async (values: any) => {
+    console.log('密码修改表单提交值:', values);
+    console.log('当前用户信息:', userInfo);
+    
     setChangingPassword(true);
     try {
       const data: ChangePasswordRequest = {
-        oldPassword: values.oldPassword,
+        email: userInfo?.email || '',
         newPassword: values.newPassword,
         verificationCode: values.verificationCode,
       };
+      
+      console.log('发送给后端的数据:', data);
       
       await changePassword(data);
       message.success('密码更新成功');
       setPasswordModalVisible(false);
       passwordForm.resetFields();
-    } catch (error) {
-      message.error('密码更新失败，请重试');
+    } catch (error: any) {
+      console.error('密码更新失败:', error);
+      
+      // 根据后端错误代码显示具体错误信息
+      let errorMessage = '密码更新失败，请重试';
+      
+      if (error.message) {
+        if (error.message.includes('AUTH-001')) {
+          errorMessage = '用户不存在';
+        } else if (error.message.includes('AUTH-003')) {
+          errorMessage = '新密码长度不能少于6位';
+        } else if (error.message.includes('AUTH-004')) {
+          errorMessage = '验证码错误或已过期';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      message.error(errorMessage);
     } finally {
       setChangingPassword(false);
     }
@@ -200,6 +301,7 @@ const UserProfile: React.FC = () => {
   // 文件上传配置
   const uploadProps: UploadProps = {
     fileList,
+    maxCount: 1, // 限制只能上传一张图片
     beforeUpload: (file) => {
       console.log('文件验证:', {
         name: file.name,
@@ -207,71 +309,133 @@ const UserProfile: React.FC = () => {
         type: file.type
       });
       
-      // 验证文件类型
+      // 验证文件类型（与后端保持一致）
       if (!file.type.startsWith('image/')) {
+        setFileValidationStatus('invalid');
         message.error('只能上传图片文件');
-        return false;
+        return Upload.LIST_IGNORE;
       }
       
-      // 验证文件大小
-      if (file.size > 5 * 1024 * 1024) {
-        message.error('头像文件大小不能超过5MB');
-        return false;
+      // 验证文件大小（与后端保持一致）
+      if (file.size > AVATAR_CONFIG.MAX_SIZE) {
+        setFileValidationStatus('invalid');
+        message.error(`头像文件大小不能超过${AVATAR_CONFIG.MAX_SIZE / 1024 / 1024}MB`);
+        return Upload.LIST_IGNORE;
       }
       
       // 验证文件扩展名
-      const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
       const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
-      if (!allowedExtensions.includes(fileExtension)) {
+      if (!AVATAR_CONFIG.ALLOWED_EXTENSIONS.includes(fileExtension)) {
+        setFileValidationStatus('invalid');
         message.error('不支持的文件格式，请选择 JPG、PNG、GIF 等图片格式');
-        return false;
+        return Upload.LIST_IGNORE;
       }
       
-      setFileList([file]);
-      return false; // 阻止自动上传
+      setFileValidationStatus('valid');
+      console.log('文件验证通过，添加到列表');
+      return false; // 阻止自动上传，但允许文件添加到列表
     },
     onRemove: () => {
+      console.log('移除文件');
       setFileList([]);
+      setFileValidationStatus('none');
+    },
+    onChange: (info) => {
+      console.log('Upload onChange:', info);
+      console.log('文件列表状态:', info.fileList);
+      
+      // 确保只保留最新的一张图片
+      if (info.fileList.length > 1) {
+        const latestFile = info.fileList[info.fileList.length - 1];
+        const previousFile = info.fileList[info.fileList.length - 2];
+        setFileList([latestFile]);
+        message.info(`已替换头像：${previousFile.name} → ${latestFile.name}`);
+      } else {
+        setFileList(info.fileList);
+      }
+    },
+    // 自定义上传按钮文本
+    itemRender: (originNode, file, fileList) => {
+      return (
+        <div style={{ position: 'relative' }}>
+          {originNode}
+          <div style={{ 
+            position: 'absolute', 
+            top: 0, 
+            right: 0, 
+            background: 'rgba(0,0,0,0.6)', 
+            color: 'white', 
+            padding: '2px 6px', 
+            fontSize: '12px',
+            borderRadius: '0 0 0 4px'
+          }}>
+            头像
+          </div>
+        </div>
+      );
     },
   };
 
   // 组件挂载时强制刷新用户信息
   useEffect(() => {
     handleRefresh();
+    
+    // 测试网络连接
+    console.log('当前token:', localStorage.getItem('token'));
+    console.log('当前用户信息:', userInfo);
   }, []);
 
+
+
   // 获取头像URL（兼容avatar_url和avatarUrl）
-  const avatarUrl = userInfo?.avatarUrl || (userInfo as any)?.avatar_url;
+  const avatarUrl = getFullAvatarUrl(userInfo?.avatarUrl || (userInfo as any)?.avatar_url);
+  
+  // 调试头像URL
+  console.log('头像URL调试信息:', {
+    originalAvatarUrl: userInfo?.avatarUrl,
+    originalAvatar_url: (userInfo as any)?.avatar_url,
+    finalAvatarUrl: avatarUrl,
+    userInfo: userInfo
+  });
 
   // 角色标注
   const getRoleTag = (roleType?: number) => {
     switch (roleType) {
       case 0:
-        return <Tag color="red" icon={<SafetyOutlined />}>管理员</Tag>;
+        return <Tag color="red" icon={<SafetyOutlined />}>{ROLE_TYPE_MAP[0]}</Tag>;
       case 2:
-        return <Tag color="blue" icon={<TeamOutlined />}>学委</Tag>;
+        return <Tag color="blue" icon={<TeamOutlined />}>{ROLE_TYPE_MAP[2]}</Tag>;
       case 1:
       default:
-        return <Tag color="green" icon={<UserOutlined />}>学生</Tag>;
+        return <Tag color="green" icon={<UserOutlined />}>{ROLE_TYPE_MAP[1]}</Tag>;
     }
   };
 
   // 班级代码转中文
   const getClassName = (classCode?: string) => {
-    const classMap: { [key: string]: string } = {
-      '1234': '计科23-1班',
-      '2005': '计科23-2班',
-      '1111': '计科23-3班',
-      '8888': '计科智能班'
-    };
-    return classMap[classCode || ''] || classCode || '未知班级';
+    return CLASS_CODE_MAP[classCode || ''] || classCode || '未知班级';
   };
 
   // 头像渲染逻辑
   let avatarNode: ReactNode = <Avatar size={100} icon={<UserOutlined />} className={styles.avatar} />;
+  
+  console.log('头像渲染逻辑:', {
+    hasUserInfo: !!userInfo,
+    hasAvatarUrl: !!avatarUrl,
+    avatarError,
+    avatarUrl,
+    userInfoRealName: userInfo?.realName
+  });
+  
   if (userInfo && avatarUrl && !avatarError) {
-    avatarNode = <Avatar size={100} src={avatarUrl} className={styles.avatar} alt="头像" onError={() => { setAvatarError(true); return false; }} />;
+    console.log('渲染头像图片:', avatarUrl);
+    avatarNode = <Avatar size={100} src={avatarUrl} className={styles.avatar} alt="头像" onError={() => { 
+      console.error('头像加载失败:', avatarUrl);
+      setAvatarError(true); 
+      return false; 
+    }} />;
   } else if (userInfo?.realName) {
+    console.log('渲染文字头像:', userInfo.realName.charAt(0));
     avatarNode = <Avatar size={100} className={styles.avatar}>{userInfo.realName.charAt(0)}</Avatar>;
   }
 
@@ -344,13 +508,13 @@ const UserProfile: React.FC = () => {
                   >
                     刷新信息
                   </Button>
-                  <Button 
+                  {/* <Button 
                     icon={<KeyOutlined />}
                     onClick={handleChangePassword}
                     block
                   >
                     修改密码
-                  </Button>
+                  </Button> */}
                   <Button 
                     danger
                     icon={<LogoutOutlined />}
@@ -478,34 +642,93 @@ const UserProfile: React.FC = () => {
           onCancel={() => {
             setAvatarModalVisible(false);
             setFileList([]);
+            setAvatarError(false); // 重置头像错误状态
+            setFileValidationStatus('none'); // 重置文件验证状态
           }}
           okText="上传头像"
           cancelText="取消"
           confirmLoading={uploading}
-          okButtonProps={{ disabled: fileList.length === 0 }}
-          width={500}
+          okButtonProps={{ 
+            disabled: fileList.length === 0,
+            title: fileList.length === 0 ? '请先选择头像文件' : '点击上传头像'
+          }}
+          width={600}
         >
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <Upload {...uploadProps} listType="picture-card" maxCount={1}>
-              <div>
-                <UploadOutlined />
-                <div style={{ marginTop: 8 }}>选择图片</div>
+            {/* 当前头像预览 */}
+            <div style={{ marginBottom: 24 }}>
+              <Text strong>当前头像：</Text>
+              <div style={{ marginTop: 8 }}>
+                {userInfo && (userInfo.avatarUrl || (userInfo as any)?.avatar_url) ? (
+                  <Avatar 
+                    size={80} 
+                    src={getFullAvatarUrl(userInfo.avatarUrl || (userInfo as any)?.avatar_url)} 
+                    alt="当前头像"
+                    onError={() => { setAvatarError(true); return false; }}
+                  />
+                ) : (
+                  <Avatar size={80} icon={<UserOutlined />} />
+                )}
               </div>
-            </Upload>
-            <div style={{ marginTop: 16, color: '#666', fontSize: 12 }}>
-              <p>支持格式：JPG、PNG、GIF、BMP、WebP等图片格式</p>
-              <p>文件大小：不超过5MB</p>
-              <p>建议尺寸：200x200像素或更大</p>
+            </div>
+
+            {/* 上传区域 */}
+            <div style={{ marginBottom: 16 }}>
+              <Text strong>选择新头像：</Text>
+              <div style={{ marginTop: 8 }}>
+                <Upload {...uploadProps} listType="picture-card" maxCount={1}>
+                  <div>
+                    <UploadOutlined />
+                    <div style={{ marginTop: 8 }}>选择图片</div>
+                  </div>
+                </Upload>
+              </div>
+            </div>
+
+            {/* 上传说明 */}
+            <div style={{ marginTop: 16, color: '#666', fontSize: 12, textAlign: 'left', maxWidth: 400, margin: '16px auto' }}>
+              <div style={{ background: '#f8f9fa', padding: 12, borderRadius: 6 }}>
+                <Text strong style={{ color: '#1890ff' }}>上传要求：</Text>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: 16 }}>
+                  <li>支持格式：{AVATAR_CONFIG.ALLOWED_EXTENSIONS.join('、').replace(/\./g, '').toUpperCase()}</li>
+                  <li>文件大小：不超过{AVATAR_CONFIG.MAX_SIZE / 1024 / 1024}MB</li>
+                  <li>建议尺寸：{AVATAR_CONFIG.RECOMMENDED_SIZE}像素或更大</li>
+                  <li>一次只能上传一张图片，重复选择会替换当前图片</li>
+                </ul>
+              </div>
             </div>
             
-            {/* 调试信息 */}
+            {/* 文件信息预览 */}
             {fileList.length > 0 && (
-              <div style={{ marginTop: 16, padding: 12, background: '#f5f5f5', borderRadius: 6, textAlign: 'left' }}>
-                <Text strong>文件信息：</Text>
+              <div style={{ 
+                marginTop: 16, 
+                padding: 12, 
+                background: fileValidationStatus === 'valid' ? '#f6ffed' : fileValidationStatus === 'invalid' ? '#fff2f0' : '#f0f9ff', 
+                border: fileValidationStatus === 'valid' ? '1px solid #b7eb8f' : fileValidationStatus === 'invalid' ? '1px solid #ffccc7' : '1px solid #91d5ff',
+                borderRadius: 6, 
+                textAlign: 'left' 
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                  <Text strong style={{ 
+                    color: fileValidationStatus === 'valid' ? '#52c41a' : fileValidationStatus === 'invalid' ? '#ff4d4f' : '#1890ff' 
+                  }}>
+                    已选择文件：
+                  </Text>
+                  {fileValidationStatus === 'valid' && (
+                    <span style={{ marginLeft: 8, color: '#52c41a', fontSize: 12 }}>
+                      ✓ 文件格式正确
+                    </span>
+                  )}
+                  {fileValidationStatus === 'invalid' && (
+                    <span style={{ marginLeft: 8, color: '#ff4d4f', fontSize: 12 }}>
+                      ✗ 文件格式有误
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                  <p>文件名：{fileList[0].name}</p>
-                  <p>文件大小：{((fileList[0].size || 0) / 1024 / 1024).toFixed(2)} MB</p>
-                  <p>文件类型：{fileList[0].type}</p>
+                  <p><Text strong>文件名：</Text>{fileList[0].name}</p>
+                  <p><Text strong>文件大小：</Text>{((fileList[0].size || 0) / 1024 / 1024).toFixed(2)} MB</p>
+                  <p><Text strong>文件类型：</Text>{fileList[0].type}</p>
                 </div>
                 <Button 
                   size="small" 
@@ -515,9 +738,9 @@ const UserProfile: React.FC = () => {
                     console.log('当前token:', localStorage.getItem('token'));
                     console.log('文件列表:', fileList);
                   }}
-                  style={{ marginTop: 8 }}
+                  style={{ marginTop: 8, padding: 0 }}
                 >
-                  调试信息
+                  查看调试信息
                 </Button>
               </div>
             )}
@@ -540,6 +763,12 @@ const UserProfile: React.FC = () => {
           footer={null}
           width={400}
         >
+          <div style={{ marginBottom: 16, padding: 12, background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 6 }}>
+            <Text type="secondary">
+              <MailOutlined /> 验证码将发送到：<Text strong>{userInfo?.email || '未知邮箱'}</Text>
+            </Text>
+          </div>
+          
           <Form
             form={passwordForm}
             layout="vertical"
@@ -547,33 +776,11 @@ const UserProfile: React.FC = () => {
             autoComplete="off"
           >
             <Form.Item
-              name="oldPassword"
-              label="当前密码"
-              rules={[
-                { required: true, message: '请输入当前密码' },
-                { min: 6, message: '密码长度至少6位' }
-              ]}
-            >
-              <Password 
-                placeholder="请输入当前密码"
-                prefix={<LockOutlined />}
-              />
-            </Form.Item>
-
-            <Form.Item
               name="newPassword"
               label="新密码"
               rules={[
                 { required: true, message: '请输入新密码' },
-                { min: 6, message: '密码长度至少6位' },
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    if (!value || getFieldValue('oldPassword') !== value) {
-                      return Promise.resolve();
-                    }
-                    return Promise.reject(new Error('新密码不能与当前密码相同'));
-                  },
-                }),
+                { min: 6, message: '密码长度至少6位' }
               ]}
             >
               <Password 
@@ -616,6 +823,16 @@ const UserProfile: React.FC = () => {
                 placeholder="请输入6位验证码"
                 prefix={<MailOutlined />}
                 maxLength={6}
+                suffix={
+                  <Button 
+                    type="link"
+                    loading={sendingCode}
+                    onClick={handleSendCode}
+                    style={{ padding: 0, height: 'auto' }}
+                  >
+                    发送验证码
+                  </Button>
+                }
               />
             </Form.Item>
 
