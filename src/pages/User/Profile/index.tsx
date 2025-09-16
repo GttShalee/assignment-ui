@@ -37,7 +37,7 @@ import {
   KeyOutlined
 } from '@ant-design/icons';
 import { useModel } from '@umijs/max';
-import { changeAvatar, changePassword, ChangePasswordRequest, sendEmailCode } from '@/services/auth';
+import { changeAvatar, changePassword, ChangePasswordRequest, sendEmailCode, updateEmail } from '@/services/auth';
 import { getFullAvatarUrl } from '@/utils/avatar';
 import { AVATAR_CONFIG, CLASS_CODE_MAP, ROLE_TYPE_MAP } from '@/constants/config';
 import styles from './index.less';
@@ -48,7 +48,7 @@ const { Password } = Input;
 // 登出函数
 const logout = async (): Promise<void> => {
   try {
-    // 这里可以调用后端登出接口
+    // 这里可以调用后端登出接口 
     // await request('/api/auth/logout', { method: 'POST' });
     
     // 清除本地存储
@@ -80,7 +80,10 @@ const UserProfile: React.FC = () => {
   const [sendingCode, setSendingCode] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [fileValidationStatus, setFileValidationStatus] = useState<'valid' | 'invalid' | 'none'>('none');
+  const [emailModalVisible, setEmailModalVisible] = useState(false);
+  const [updatingEmail, setUpdatingEmail] = useState(false);
   const [passwordForm] = Form.useForm();
+  const [emailForm] = Form.useForm();
 
   // 强制刷新用户信息
   const handleRefresh = async () => {
@@ -298,6 +301,35 @@ const UserProfile: React.FC = () => {
     }
   };
 
+  // 打开邮箱修改弹窗
+  const handleEmailEdit = () => {
+    setEmailModalVisible(true);
+    emailForm.setFieldsValue({ newEmail: '' });
+  };
+
+  // 更新邮箱
+  const handleEmailSubmit = async (values: any) => {
+    console.log('邮箱修改表单提交值:', values);
+    
+    setUpdatingEmail(true);
+    try {
+      await updateEmail({ newEmail: values.newEmail });
+      message.success('邮箱更新成功');
+      
+      setEmailModalVisible(false);
+      emailForm.resetFields();
+      
+      // 刷新用户信息以确保数据同步
+      await handleRefresh();
+    } catch (error: any) {
+      console.error('邮箱更新失败:', error);
+      const errorMessage = error.message || '邮箱更新失败，请重试';
+      message.error(errorMessage);
+    } finally {
+      setUpdatingEmail(false);
+    }
+  };
+
   // 文件上传配置
   const uploadProps: UploadProps = {
     fileList,
@@ -389,14 +421,6 @@ const UserProfile: React.FC = () => {
 
   // 获取头像URL（兼容avatar_url和avatarUrl）
   const avatarUrl = getFullAvatarUrl(userInfo?.avatarUrl || (userInfo as any)?.avatar_url);
-  
-  // 调试头像URL
-  console.log('头像URL调试信息:', {
-    originalAvatarUrl: userInfo?.avatarUrl,
-    originalAvatar_url: (userInfo as any)?.avatar_url,
-    finalAvatarUrl: avatarUrl,
-    userInfo: userInfo
-  });
 
   // 角色标注
   const getRoleTag = (roleType?: number) => {
@@ -565,6 +589,26 @@ const UserProfile: React.FC = () => {
                     )
                   },
                   { title: '内容', dataIndex: 'value', key: 'value' },
+                  {
+                    title: '操作',
+                    key: 'action',
+                    width: 100,
+                    render: (text, record) => {
+                      if (record.key === 'email') {
+                        return (
+                          <Button
+                            type="link"
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={handleEmailEdit}
+                          >
+                            修改
+                          </Button>
+                        );
+                      }
+                      return null;
+                    }
+                  }
                 ]}
                 pagination={false}
                 rowKey="key"
@@ -848,6 +892,72 @@ const UserProfile: React.FC = () => {
                   type="primary" 
                   htmlType="submit"
                   loading={changingPassword}
+                >
+                  确认修改
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* 修改邮箱弹窗 */}
+        <Modal
+          title={
+            <Space>
+              <MailOutlined />
+              修改邮箱
+            </Space>
+          }
+          open={emailModalVisible}
+          onCancel={() => {
+            setEmailModalVisible(false);
+            emailForm.resetFields();
+          }}
+          footer={null}
+          width={400}
+        >
+          <Form
+            form={emailForm}
+            layout="vertical"
+            onFinish={handleEmailSubmit}
+            autoComplete="off"
+          >
+            <Form.Item
+              name="newEmail"
+              label="新邮箱地址"
+              rules={[
+                { required: true, message: '请输入新的邮箱地址' },
+                { type: 'email', message: '请输入有效的邮箱地址' },
+                {
+                  validator: (_, value) => {
+                    if (value && userInfo && value === userInfo.studentId) {
+                      return Promise.reject(new Error('新邮箱不能与学号相同'));
+                    }
+                    return Promise.resolve();
+                  },
+                },
+              ]}
+            >
+              <Input
+                prefix={<MailOutlined />}
+                placeholder="请输入新的邮箱地址"
+                size="large"
+              />
+            </Form.Item>
+
+            <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+              <Space>
+                <Button onClick={() => {
+                  setEmailModalVisible(false);
+                  emailForm.resetFields();
+                }}>
+                  取消
+                </Button>
+                <Button 
+                  type="primary" 
+                  htmlType="submit"
+                  loading={updatingEmail}
+                  icon={<MailOutlined />}
                 >
                   确认修改
                 </Button>

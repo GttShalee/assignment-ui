@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '@/constants/config';
 import { 
   Table, 
   Button, 
@@ -311,6 +312,8 @@ const WorkList: React.FC = () => {
 
       await submitHomework(submitData);
 
+      
+
       // 根据文件名格式是否正确显示不同的提示信息
       if (validation.isValid) {
         message.success('谢谢你认真提交了作业');
@@ -485,7 +488,7 @@ const WorkList: React.FC = () => {
 
     try {
       // 构建完整的下载链接
-      const downloadUrl = `http://localhost:8888${attachmentUrl}`;
+      const downloadUrl = `${API_BASE_URL}${attachmentUrl}`;
       
       // 从URL中提取文件名
       const fileName = attachmentUrl.split('/').pop() || 'attachment';

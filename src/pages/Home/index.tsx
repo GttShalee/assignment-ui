@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { PageContainer } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
-import { Tag } from 'antd';
+import { Tag, message } from 'antd';
 import { history } from '@umijs/max';
 import { NotificationOutlined } from '@ant-design/icons';
 import styles from './index.less';
 import { POEMS } from '@/constants/poem';
 import { announcements, UpdateItem } from '../notify/announcementData';
+import EmailUpdateModal from '@/components/EmailUpdateModal';
+import { updateEmail, getCurrentUser } from '@/services/auth';
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -28,10 +30,12 @@ interface Announcement {
 }
 
 const HomePage: React.FC = () => {
-  const { name, userInfo } = useModel('global');
+  const { name, userInfo, updateUserInfo } = useModel('global');
+  const { refresh } = useModel('@@initialState');
   const [time, setTime] = useState<string>(new Date().toLocaleString());
   const [poem, setPoem] = useState<string>('');
   const [latestAnnouncement, setLatestAnnouncement] = useState<Announcement | null>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   useEffect(() => {
     setPoem(POEMS[Math.floor(Math.random() * POEMS.length)]);
@@ -46,6 +50,59 @@ const HomePage: React.FC = () => {
     const mockLatestAnnouncement: Announcement = announcements[0];
     setLatestAnnouncement(mockLatestAnnouncement);
   }, []);
+
+  // 检查邮箱是否与学号相同
+  const checkEmailAndStudentId = () => {
+    if (!userInfo) return false;
+    const { email, studentId } = userInfo;
+    return email === studentId;
+  };
+
+  // 邮箱检查逻辑 - 页面加载后检查
+  useEffect(() => {
+    // 延迟一秒后检查，让用户先看到首页内容
+    const timer = setTimeout(() => {
+      if (userInfo && checkEmailAndStudentId()) {
+        setShowEmailModal(true);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [userInfo]);
+
+  // 处理邮箱更新成功
+  const handleEmailUpdateSuccess = async (newEmail: string) => {
+    setShowEmailModal(false);
+    
+    try {
+      // 重新获取最新的用户信息
+      const latestUserInfo = await getCurrentUser();
+      
+      // 更新全局用户信息（global model）
+      updateUserInfo(latestUserInfo);
+      
+      // 刷新UmiJS的初始状态
+      await refresh();
+      
+      console.log('用户信息已更新:', latestUserInfo);
+      message.success('邮箱更新成功！');
+    } catch (error) {
+      console.error('获取最新用户信息失败:', error);
+      // 如果获取失败，至少更新邮箱字段
+      if (userInfo) {
+        const updatedUserInfo = { ...userInfo, email: newEmail };
+        updateUserInfo(updatedUserInfo);
+        await refresh();
+      }
+      message.success('邮箱更新成功！');
+    }
+  };
+
+  // 处理邮箱更新取消
+  const handleEmailUpdateCancel = () => {
+    setShowEmailModal(false);
+    message.info('您可以稍后在个人设置中修改邮箱');
+  };
 
   // 获取公告类型对应的颜色
   const getAnnouncementColor = (type: string) => {
@@ -144,6 +201,15 @@ const HomePage: React.FC = () => {
         <br />
         <div style={{ fontSize: 16, fontStyle: 'italic', color: '#666', marginBottom: 32 }}>{poem}</div>
       </div>
+
+      {/* 邮箱更新弹窗 */}
+      <EmailUpdateModal
+        visible={showEmailModal}
+        onCancel={handleEmailUpdateCancel}
+        onSuccess={handleEmailUpdateSuccess}
+        currentEmail={userInfo?.email || ''}
+        studentId={userInfo?.studentId || ''}
+      />
     </PageContainer>
   );
 };

@@ -94,7 +94,8 @@ export default defineConfig({
   // 配置代理
   proxy: {
     '/api': {
-      target: 'http://localhost:8080', // 你的本地后端地址
+      target: 'http://101.201.46.184:8080', // 后端地址
+      // target: 'localhost:8080',
       changeOrigin: true,
       // pathRewrite: { '^/api': '' },
     },

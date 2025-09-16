@@ -3,7 +3,8 @@
  */
 
 // 后端服务地址
-export const API_BASE_URL = 'http://localhost:8888';
+// @ts-ignore
+export const API_BASE_URL = API_BASE_URL || 'http://localhost:8080';
 
 // 头像相关配置
 export const AVATAR_CONFIG = {

@@ -274,3 +274,28 @@ export async function changePassword(data: ChangePasswordRequest): Promise<strin
     throw error;
   }
 }
+
+// 更新邮箱接口
+export interface UpdateEmailRequest {
+  newEmail: string;
+}
+
+export async function updateEmail(data: UpdateEmailRequest): Promise<string> {
+  console.log('updateEmail函数被调用，参数:', data);
+  
+  try {
+    const response = await request('/api/auth/update-email', {
+      method: 'POST',
+      data,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    console.log('updateEmail响应:', response);
+    return response;
+  } catch (error: any) {
+    console.error('updateEmail错误:', error);
+    throw error;
+  }
+}

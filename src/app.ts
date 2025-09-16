@@ -55,6 +55,11 @@ export const layout = () => {
 // 请求拦截器配置
 export const request = {
   timeout: 30000, // 增加超时时间，特别是文件上传
+  
+  // 开发环境使用代理，生产环境使用完整URL
+  // @ts-ignore
+  baseURL: process.env.NODE_ENV === 'production' ? API_BASE_URL : '',
+  
   errorConfig: {
     errorHandler: (error: any) => {
       console.error('请求错误:', error);

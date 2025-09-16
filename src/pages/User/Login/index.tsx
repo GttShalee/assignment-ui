@@ -21,8 +21,7 @@ import {
   Alert,
   Tabs
 } from 'antd';
-import { history } from '@umijs/max';
-import { useModel } from '@umijs/max';
+import { history, useModel } from '@umijs/max';
 import styles from './index.less';
 import { login, loginEmail, sendEmailCode, saveToken, convertLoginResponseToUserInfo } from '@/services/auth';
 
@@ -69,6 +68,7 @@ const Login: React.FC = () => {
     }
   };
 
+
   // 提交登录
   const handleSubmit = async (values: any) => {
     setErrorMsg(null);
@@ -92,8 +92,8 @@ const Login: React.FC = () => {
       
       message.success('登录成功');
       
-      // 强制刷新页面以确保权限状态正确更新
-      window.location.href = '/home';
+      // 跳转到首页
+      history.push('/home');
     } catch (error: any) {
       // 优先展示后端返回的 message
       const msg = error?.response?.data?.message || '登录失败';

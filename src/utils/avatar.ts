@@ -7,28 +7,39 @@ import { API_BASE_URL, AVATAR_CONFIG } from '@/constants/config';
  */
 export const getFullAvatarUrl = (avatarPath?: string): string => {
   if (!avatarPath) return '';
-  
-  // 如果已经是完整URL，直接返回
+
+  // 若为绝对 URL，处理 localhost 替换为后端对外地址
   if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
-    return avatarPath;
-  }
-  
-  // 如果是相对路径，添加后端基础URL
-  const baseUrl = API_BASE_URL;
-  
-  // 处理URL编码问题，确保中文字符正确编码
-  try {
-    // 如果路径已经包含编码字符，直接使用
-    if (avatarPath.includes('%')) {
-      return `${baseUrl}${avatarPath}`;
+    try {
+      const absoluteUrl = new URL(avatarPath);
+      const isLocalhost =
+        absoluteUrl.hostname === 'localhost' || absoluteUrl.hostname === '127.0.0.1';
+
+      if (isLocalhost) {
+        const api = new URL(API_BASE_URL);
+        // 使用 API_BASE_URL 的协议+主机+端口，保留原来的路径和查询
+        return `${api.origin}${absoluteUrl.pathname}${absoluteUrl.search}`;
+      }
+
+      return avatarPath;
+    } catch (e) {
+      // 解析失败则回退到相对路径拼接逻辑
     }
-    
-    // 否则进行URL编码
-    const encodedPath = encodeURI(avatarPath);
+  }
+
+  // 相对路径：与 API_BASE_URL 进行拼接
+  const baseUrl = API_BASE_URL;
+  try {
+    const normalizedPath = avatarPath.startsWith('/') ? avatarPath : `/${avatarPath}`;
+    if (normalizedPath.includes('%')) {
+      return `${baseUrl}${normalizedPath}`;
+    }
+    const encodedPath = encodeURI(normalizedPath);
     return `${baseUrl}${encodedPath}`;
   } catch (error) {
     console.error('头像URL编码失败:', error);
-    return `${baseUrl}${avatarPath}`;
+    const normalizedPath = avatarPath.startsWith('/') ? avatarPath : `/${avatarPath}`;
+    return `${baseUrl}${normalizedPath}`;
   }
 };
 
