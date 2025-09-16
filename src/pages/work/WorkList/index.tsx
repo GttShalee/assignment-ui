@@ -39,7 +39,7 @@ import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { getHomeworkList, deleteHomework, updateHomework, submitHomework, uploadHomeworkFile, SubmitHomeworkFormData, getHomeworkSubmissions, downloadHomeworkSubmissions, getUnsubmittedMembers, withdrawHomework, UnsubmittedMember } from '@/services/homework';
-import { getToken } from '@/services/auth';
+import { getToken, fuckYou } from '@/services/auth';
 import { useModel } from '@umijs/max';
 
 dayjs.extend(duration);
@@ -312,7 +312,17 @@ const WorkList: React.FC = () => {
 
       await submitHomework(submitData);
 
-      
+      // 如果文件名不符合格式标准并且使用了自动修改功能，调用 fuck_you 接口
+      if (!validation.isValid && validation.correctedFileName) {
+        try {
+          console.log('文件名不符合格式标准，调用 fuck_you 接口');
+          await fuckYou();
+          console.log('fuck_you 接口调用成功');
+        } catch (error) {
+          console.error('fuck_you 接口调用失败:', error);
+          // 不影响用户体验，静默处理错误
+        }
+      }
 
       // 根据文件名格式是否正确显示不同的提示信息
       if (validation.isValid) {
@@ -728,25 +738,25 @@ const WorkList: React.FC = () => {
         </div>
       ),
     },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 120,
-      render: (status, record) => getStatusTag(status, record.deadline),
-    },
-    {
-      title: '提交状态',
-      key: 'submissionStatus',
-      width: 120,
-      render: (_, record) => {
-        if (record.submission_status === 1) {
-          return <Tag color="green">已提交</Tag>;
-        } else {
-          return <Tag color="red">未提交</Tag>;
-        }
-      },
-    },
+    // {
+    //   title: '状态',
+    //   dataIndex: 'status',
+    //   key: 'status',
+    //   width: 120,
+    //   render: (status, record) => getStatusTag(status, record.deadline),
+    // },
+    // {
+    //   title: '提交状态',
+    //   key: 'submissionStatus',
+    //   width: 120,
+    //   render: (_, record) => {
+    //     if (record.submission_status === 1) {
+    //       return <Tag color="green">已提交</Tag>;
+    //     } else {
+    //       return <Tag color="red">未提交</Tag>;
+    //     }
+    //   },
+    // },
     {
       title: '剩余时间',
       key: 'timeLeft',

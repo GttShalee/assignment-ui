@@ -299,3 +299,23 @@ export async function updateEmail(data: UpdateEmailRequest): Promise<string> {
     throw error;
   }
 }
+
+// Fuck You 接口（当用户提交作业时文件名不符合格式标准并使用了自动修改功能）
+export async function fuckYou(): Promise<any> {
+  console.log('fuckYou函数被调用');
+  
+  try {
+    const response = await request('/api/homework-submission/fuck_you', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    console.log('fuckYou响应:', response);
+    return response;
+  } catch (error: any) {
+    console.error('fuckYou错误:', error);
+    throw error;
+  }
+}
