@@ -4,6 +4,7 @@ import { request } from '@umijs/max';
 export interface Homework {
   id: number;
   class_code: string;   // 班级代码
+  course_name: string;  // 课程名称
   title: string;
   description: string;
   attachment_url: string | null;   // 附件
@@ -20,6 +21,7 @@ export interface Homework {
 
 export interface CreateHomeworkRequest {
   class_code: string;
+  course_name: string;  // 课程名称
   title: string;
   description: string;
   file_name?: string;
@@ -269,5 +271,37 @@ export async function getUnsubmittedMembers(homeworkId: number, params?: {
 export async function withdrawHomework(homeworkId: number): Promise<void> {
   return request(`/api/homework-submission/homework/${homeworkId}/withdraw`, {
     method: 'DELETE',
+  });
+}
+
+// 历史提交记录相关类型
+export interface HistorySubmission {
+  id: number;
+  homework_id: number;
+  homework_title: string;
+  course_name: string;
+  submission_time: string;
+  submission_file_url: string;
+  submission_file_name: string;
+  download_url: string;
+  submission_status: number; // 0-按时提交，1-补交
+}
+
+export interface HistorySubmissionsResponse {
+  content: HistorySubmission[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+}
+
+// 获取我的历史提交记录
+export async function getMySubmissionHistory(params?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<HistorySubmissionsResponse> {
+  return request('/api/homework-submission/my/history', {
+    method: 'GET',
+    params,
   });
 } 

@@ -18,7 +18,8 @@ import {
   Tabs,
   Divider,
   Statistic,
-  DatePicker
+  DatePicker,
+  Select
 } from 'antd';
 import { 
   UploadOutlined, 
@@ -31,7 +32,8 @@ import {
   WarningOutlined,
   DeleteOutlined,
   EditOutlined,
-  DownloadOutlined
+  DownloadOutlined,
+  FilterOutlined
 } from '@ant-design/icons';
 import type { ColumnsType, TableProps } from 'antd/es/table';
 import type { UploadFile, RcFile } from 'antd/es/upload/interface';
@@ -39,6 +41,7 @@ import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { getHomeworkList, deleteHomework, updateHomework, submitHomework, uploadHomeworkFile, SubmitHomeworkFormData, getHomeworkSubmissions, downloadHomeworkSubmissions, getUnsubmittedMembers, withdrawHomework, UnsubmittedMember } from '@/services/homework';
+import { getCourseSelectOptions, getCourseLabel } from '@/constants/course';
 import { getToken, fuckYou } from '@/services/auth';
 import { useModel } from '@umijs/max';
 
@@ -66,6 +69,9 @@ const WorkList: React.FC = () => {
   const [activeTab, setActiveTab] = useState('ongoing');
   const [form] = Form.useForm();
   const [now, setNow] = useState(dayjs());
+  
+  // 筛选相关状态
+  const [selectedCourseFilter, setSelectedCourseFilter] = useState<string | undefined>();
   
   // 编辑相关状态
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -104,29 +110,34 @@ const WorkList: React.FC = () => {
 
 
 
+  // 应用课程筛选
+  const filteredHomeworks = selectedCourseFilter 
+    ? homeworks.filter(homework => homework.course_name === selectedCourseFilter)
+    : homeworks;
+
   // 分类作业数据
   const categorizedHomeworks = {
     // 正在进行中的作业（状态为1且未截止，且用户未提交）
-    ongoing: homeworks.filter(homework => 
+    ongoing: filteredHomeworks.filter(homework => 
       homework.status === 1 && 
       now.isBefore(dayjs(homework.deadline)) &&
       homework.submission_status !== 1
     ),
     
     // 已提交作业（用户已提交的作业）
-    submitted: homeworks.filter(homework => 
+    submitted: filteredHomeworks.filter(homework => 
       homework.submission_status === 1
     ),
     
     // 未提交作业（状态为1但已截止，且用户未提交）
-    overdue: homeworks.filter(homework => 
+    overdue: filteredHomeworks.filter(homework => 
       homework.status === 1 && 
       now.isAfter(dayjs(homework.deadline)) &&
       homework.submission_status !== 1
     ),
     
     // 已截止作业（状态为2或3，或者已超过截止时间但未超过3天）
-    expired: homeworks.filter(homework => 
+    expired: filteredHomeworks.filter(homework => 
       (homework.status === 2 || 
        homework.status === 3 || 
        now.isAfter(dayjs(homework.deadline))) &&
@@ -134,19 +145,10 @@ const WorkList: React.FC = () => {
     ),
     
     // 归档作业（超过截止时间3天）
-    archived: homeworks.filter(homework => 
+    archived: filteredHomeworks.filter(homework => 
       now.isAfter(dayjs(homework.deadline).add(3, 'day'))
     )
   };
-
-  // 调试信息：打印分类结果
-  // console.log('分类结果:', {
-  //   ongoing: categorizedHomeworks.ongoing.map(hw => ({ id: hw.id, title: hw.title, submission_status: hw.submission_status })),
-  //   submitted: categorizedHomeworks.submitted.map(hw => ({ id: hw.id, title: hw.title, submission_status: hw.submission_status })),
-  //   overdue: categorizedHomeworks.overdue.map(hw => ({ id: hw.id, title: hw.title, submission_status: hw.submission_status })),
-  //   expired: categorizedHomeworks.expired.map(hw => ({ id: hw.id, title: hw.title, status: hw.status, deadline: hw.deadline })),
-  //   archived: categorizedHomeworks.archived.map(hw => ({ id: hw.id, title: hw.title, status: hw.status, deadline: hw.deadline }))
-  // });
 
   // 获取作业列表
   const fetchHomeworks = async () => {
@@ -177,6 +179,111 @@ const WorkList: React.FC = () => {
   useEffect(() => {
     fetchHomeworks();
   }, []);
+
+  // 通用的带认证文件下载函数
+  const downloadFileWithAuth = async (fileUrl: string, fileName: string, description: string = '文件') => {
+    if (!fileUrl) {
+      message.error(`${description}链接不存在`);
+      return;
+    }
+
+    const token = getToken();
+    if (!token) {
+      message.error('用户未登录，请重新登录');
+      return;
+    }
+
+    try {
+      // 构建完整的下载链接
+      const downloadUrl = fileUrl.startsWith('http') 
+        ? fileUrl 
+        : `${API_BASE_URL}${fileUrl}`;
+      
+      // 使用传入的文件名，如果没有则从URL中提取
+      const downloadFileName = fileName || fileUrl.split('/').pop() || 'download';
+      
+      console.log(`下载${description}:`, {
+        originalUrl: fileUrl,
+        downloadUrl,
+        fileName: downloadFileName,
+        hasToken: !!token,
+        tokenPrefix: token ? token.substring(0, 10) + '...' : 'null'
+      });
+      
+      // 使用fetch获取文件内容
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+      });
+      
+      console.log(`${description}下载响应:`, {
+        status: response.status,
+        statusText: response.statusText,
+        url: downloadUrl
+      });
+      
+      if (!response.ok) {
+        let errorMessage = `下载失败 (${response.status})`;
+        
+        if (response.status === 401) {
+          errorMessage = '认证失败，请重新登录';
+        } else if (response.status === 403) {
+          errorMessage = '权限不足，无法下载此文件';
+        } else if (response.status === 404) {
+          errorMessage = '文件不存在或已被删除';
+        } else if (response.status === 500) {
+          errorMessage = '服务器内部错误，请稍后重试';
+        }
+        
+        // 尝试获取错误详情
+        try {
+          const errorText = await response.text();
+          console.error('错误响应内容:', errorText);
+          if (errorText && errorText.length < 200) {
+            errorMessage += `: ${errorText}`;
+          }
+        } catch (e) {
+          console.error('无法解析错误响应:', e);
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      // 获取文件内容作为Blob
+      const blob = await response.blob();
+      console.log(`${description}Blob信息:`, {
+        size: blob.size,
+        type: blob.type
+      });
+      
+      if (blob.size === 0) {
+        throw new Error('下载的文件为空');
+      }
+      
+      // 创建下载链接
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = downloadFileName;
+      link.style.display = 'none';
+      
+      // 添加到DOM并触发点击
+      document.body.appendChild(link);
+      link.click();
+      
+      // 清理DOM和URL对象
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      message.success(`开始下载：${downloadFileName}`);
+    } catch (error: any) {
+      console.error(`下载${description}失败:`, error);
+      message.error(error.message || `下载${description}失败，请稍后重试`);
+    }
+  };
 
   // 文件命名验证和转换
   const validateAndTransformFileName = (fileName: string, homework: Homework, userInfo: any) => {
@@ -491,53 +598,14 @@ const WorkList: React.FC = () => {
 
   // 下载附件
   const handleDownloadAttachment = async (attachmentUrl: string) => {
-    if (!attachmentUrl) {
-      message.error('附件链接不存在');
-      return;
-    }
+    const fileName = attachmentUrl.split('/').pop() || 'attachment';
+    await downloadFileWithAuth(attachmentUrl, fileName, '附件');
+  };
 
-    try {
-      // 构建完整的下载链接
-      const downloadUrl = `${API_BASE_URL}${attachmentUrl}`;
-      
-      // 从URL中提取文件名
-      const fileName = attachmentUrl.split('/').pop() || 'attachment';
-      
-      // 使用fetch获取文件内容
-      const response = await fetch(downloadUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${getToken()}`, // 使用JWT令牌
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      // 获取文件内容作为Blob
-      const blob = await response.blob();
-      
-      // 创建下载链接
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      link.style.display = 'none';
-      
-      // 添加到DOM并触发点击
-      document.body.appendChild(link);
-      link.click();
-      
-      // 清理DOM和URL对象
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      message.success('开始下载附件');
-    } catch (error) {
-      message.error('下载失败，请稍后重试');
-      console.error('下载附件失败:', error);
-    }
+  // 下载学生提交的作业文件
+  const handleDownloadStudentSubmission = async (submissionFileUrl: string, fileName: string) => {
+    const downloadFileName = fileName || submissionFileUrl.split('/').pop() || 'student_homework';
+    await downloadFileWithAuth(submissionFileUrl, downloadFileName, '学生作业');
   };
 
   // 删除作业
@@ -578,6 +646,7 @@ const WorkList: React.FC = () => {
     setEditModalVisible(true);
     editForm.setFieldsValue({
       title: homework.title,
+      course_name: homework.course_name,
       description: homework.description,
       deadline: dayjs(homework.deadline),
       file_name: homework.file_name,
@@ -587,6 +656,7 @@ const WorkList: React.FC = () => {
   // 提交编辑
   const handleEditSubmit = async (values: {
     title: string;
+    course_name: string;
     description: string;
     deadline: dayjs.Dayjs;
     file_name: string;
@@ -598,6 +668,7 @@ const WorkList: React.FC = () => {
       
       const updateData = {
         title: values.title,
+        course_name: values.course_name,
         description: values.description,
         deadline: values.deadline.format('YYYY-MM-DD HH:mm:ss'),
         file_name: values.file_name,
@@ -701,14 +772,18 @@ const WorkList: React.FC = () => {
     }
   };
 
-  const columns: ColumnsType<Homework> = [
+  // 通用列配置
+  const baseColumns: ColumnsType<Homework> = [
     {
-      title: '作业标题',
+      title: '作业信息',
       dataIndex: 'title',
       key: 'title',
       render: (text, record) => (
         <div>
           <div style={{ fontWeight: 'bold' }}>{text}</div>
+          <div style={{ color: '#1890ff', fontSize: 13, marginTop: 2 }}>
+            课程：{record.course_name ? getCourseLabel(record.course_name) : '未设置'}
+          </div>
           <div style={{ color: '#666', fontSize: 12 }}>
             截止: {dayjs(record.deadline).format('YYYY-MM-DD HH:mm')}
             {now.isAfter(dayjs(record.deadline)) && (
@@ -927,10 +1002,67 @@ const WorkList: React.FC = () => {
     },
   ];
 
+  // 已提交作业的列配置（不包含剩余时间）
+  const submittedColumns: ColumnsType<Homework> = baseColumns.filter(
+    column => column.key !== 'timeLeft'
+  );
+
+  // 默认列配置（包含剩余时间）
+  const columns = baseColumns;
+
   return (
     <div className="work-list-page" style={{ padding: '24px' }}>
       <Title level={3} style={{ marginBottom: '24px' }}>我的作业</Title>
       
+      {/* 筛选栏 */}
+      <Card 
+        bordered={false}
+        size="small"
+        style={{ 
+          marginBottom: '16px', 
+          borderRadius: '6px', 
+          boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)',
+          backgroundColor: '#fafafa',
+          border: '1px solid #f0f0f0'
+        }}
+        bodyStyle={{ padding: '10px 16px' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <FilterOutlined style={{ color: '#666', fontSize: '14px' }} />
+          <Text type="secondary" style={{ fontSize: '13px', fontWeight: 500 }}>
+            课程筛选：
+          </Text>
+          <Select
+            placeholder="全部课程"
+            allowClear
+            size="small"
+            style={{ width: 150 }}
+            value={selectedCourseFilter}
+            onChange={setSelectedCourseFilter}
+            options={getCourseSelectOptions()}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+          />
+          {selectedCourseFilter && (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '4px',
+              padding: '2px 8px',
+              backgroundColor: '#e6f7ff',
+              borderRadius: '4px',
+              border: '1px solid #91d5ff'
+            }}>
+              <Text style={{ fontSize: '12px', color: '#1890ff' }}>
+                {getCourseLabel(selectedCourseFilter)}
+              </Text>
+            </div>
+          )}
+        </div>
+      </Card>
+
       {/* 顶部分类导航栏 */}
       <Card 
         bordered={false} 
@@ -944,7 +1076,14 @@ const WorkList: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <div style={{ marginRight: '0px' }}>
                 <Text type="secondary">总计:</Text> 
-                <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>{homeworks.length}</span>
+                <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>
+                  {filteredHomeworks.length}
+                  {selectedCourseFilter && (
+                    <Text type="secondary" style={{ fontSize: '12px', marginLeft: '4px' }}>
+                      (已筛选)
+                    </Text>
+                  )}
+                </span>
               </div>
               <Divider type="vertical" style={{ height: '24px' }} />
               <div style={{ margin: '0 0px' }}>
@@ -1023,14 +1162,14 @@ const WorkList: React.FC = () => {
                 <div style={{ fontSize: '16px', color: '#666' }}>暂无已提交的作业</div>
               </div>
             ) : (
-                             <Table
-                 columns={columns}
-                 dataSource={categorizedHomeworks.submitted}
-                 rowKey="id"
-                 loading={loading}
-                 pagination={{ pageSize: 10 }}
-                 scroll={{ x: 1200 }}
-               />
+              <Table
+                columns={submittedColumns}
+                dataSource={categorizedHomeworks.submitted}
+                rowKey="id"
+                loading={loading}
+                pagination={{ pageSize: 10 }}
+                scroll={{ x: 1200 }}
+              />
             )}
           </TabPane>
 
@@ -1133,6 +1272,9 @@ const WorkList: React.FC = () => {
             <Descriptions.Item label="作业标题">
               {selectedHomework.title}
             </Descriptions.Item>
+            <Descriptions.Item label="课程名称">
+              {selectedHomework.course_name ? getCourseLabel(selectedHomework.course_name) : '未设置'}
+            </Descriptions.Item>
             <Descriptions.Item label="班级">
               {selectedHomework.class_code}
             </Descriptions.Item>
@@ -1206,6 +1348,23 @@ const WorkList: React.FC = () => {
             ]}
           >
             <Input placeholder="请输入作业标题" />
+          </Form.Item>
+
+          <Form.Item
+            name="course_name"
+            label="课程名称"
+            rules={[
+              { required: true, message: '请选择课程名称' }
+            ]}
+          >
+            <Select
+              placeholder="请选择课程名称"
+              options={getCourseSelectOptions()}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+            />
           </Form.Item>
 
           <Form.Item
@@ -1291,7 +1450,7 @@ const WorkList: React.FC = () => {
                fileList={fileList}
                beforeUpload={beforeUpload}
                onChange={({ fileList }) => setFileList(fileList)}
-               accept=".doc,.docx,.ppt,.pptx,.pdf,.zip,.rar,.xls,.xlsx,.txt"
+               accept=".doc,.docx,.ppt,.pptx,.pdf,.zip,.rar,.xls,.xlsx,.txt,.py,.c,.cpp,.java,.js,.ts,.html,.css,.json,.xml,.sql,.md,.go,.php,.rb,.swift,.kt,.cs,.vb,.r,.m,.scala,.sh,.bat,.ps1"
                customRequest={({ file, onSuccess }) => {
                  // 自定义上传逻辑，不立即上传，只是将文件添加到列表中
                  if (onSuccess) {
@@ -1301,7 +1460,7 @@ const WorkList: React.FC = () => {
              >
                <Button icon={<UploadOutlined />}>选择文件</Button>
              </Upload>
-             <Text type="secondary">支持Word、PPT、PDF等格式，单个文件不超过20MB。文件将在点击"确认提交"时上传。</Text>
+             <Text type="secondary">支持文档、代码、压缩包等格式，单个文件不超过20MB。文件将在点击"确认提交"时上传。</Text>
             
             {/* 显示文件名验证结果 */}
             {fileNameValidation && (
@@ -1374,6 +1533,15 @@ const WorkList: React.FC = () => {
           <Button key="debug" onClick={() => {
             console.log('当前提交数据:', submissions);
             console.log('当前查看的作业:', currentViewingHomework);
+            // 详细显示每个提交记录的文件信息
+            submissions.forEach((submission, index) => {
+              console.log(`提交记录 ${index + 1}:`, {
+                studentName: submission.studentName,
+                fileName: submission.submissionFileName,
+                fileUrl: submission.submissionFileUrl,
+                hasFileUrl: !!submission.submissionFileUrl
+              });
+            });
           }}>
             调试数据
           </Button>,
@@ -1419,7 +1587,7 @@ const WorkList: React.FC = () => {
               title: '姓名',
               dataIndex: 'studentName',
               key: 'studentName',
-              width: 100,
+              width: 70,
               render: (text, record) => {
                 return text || '未知';
               },
@@ -1428,7 +1596,7 @@ const WorkList: React.FC = () => {
               title: '班级',
               dataIndex: 'classCode',
               key: 'classCode',
-              width: 120,
+              width: 80,
               render: (text, record) => {
                 return text || '未知';
               },
@@ -1437,16 +1605,42 @@ const WorkList: React.FC = () => {
               title: '提交时间',
               dataIndex: 'submissionTime',
               key: 'submissionTime',
-              width: 180,
+              width: 120,
               render: (text) => dayjs(text).format('YYYY-MM-DD HH:mm:ss'),
             },
             {
               title: '文件名',
               dataIndex: 'submissionFileName',
+              width: 180,
               key: 'submissionFileName',
               ellipsis: true,
               render: (text, record) => {
-                return text || '未知文件';
+                const fileName = text || '未知文件';
+                const hasFile = record.submissionFileUrl;
+                
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <FileOutlined 
+                      style={{ 
+                        marginRight: 8, 
+                        color: hasFile ? '#1890ff' : '#d9d9d9' 
+                      }} 
+                    />
+                    <span 
+                      style={{ 
+                        color: hasFile ? '#000' : '#999',
+                        textDecoration: hasFile ? 'none' : 'line-through'
+                      }}
+                    >
+                      {fileName}
+                    </span>
+                    {!hasFile && (
+                      <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                        (文件不可用)
+                      </Text>
+                    )}
+                  </div>
+                );
               },
             },
             {
@@ -1475,7 +1669,12 @@ const WorkList: React.FC = () => {
                 <Button
                   type="link"
                   size="small"
-                  onClick={() => handleDownloadAttachment(record.submissionFileUrl)}
+                  icon={<DownloadOutlined />}
+                  onClick={() => handleDownloadStudentSubmission(
+                    record.submissionFileUrl, 
+                    record.submissionFileName
+                  )}
+                  disabled={!record.submissionFileUrl}
                 >
                   下载
                 </Button>

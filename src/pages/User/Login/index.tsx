@@ -34,6 +34,7 @@ const Login: React.FC = () => {
   const [loginType, setLoginType] = useState<'studentId' | 'email'>('studentId');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const { updateUserInfo } = useModel('global');
+  const { refresh } = useModel('@@initialState');
 
   useEffect(() => {
     if (sessionStorage.getItem('login_redirect') === '1') {
@@ -89,6 +90,14 @@ const Login: React.FC = () => {
       // 转换并更新用户信息
       const userInfo = convertLoginResponseToUserInfo(response);
       updateUserInfo(userInfo);
+      
+      // 刷新UmiJS初始状态，确保全局状态同步
+      try {
+        await refresh();
+        console.log('登录成功，已刷新全局状态');
+      } catch (error) {
+        console.error('刷新全局状态失败:', error);
+      }
       
       message.success('登录成功');
       

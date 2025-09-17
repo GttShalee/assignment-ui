@@ -12,14 +12,29 @@ export async function getInitialState(): Promise<{ name: string; currentUser?: a
   }
 
   try {
+    console.log('开始获取初始用户状态...');
     const currentUser = await getCurrentUser();
-    console.log('Initial state loaded:', { currentUser });
+    console.log('Initial state loaded:', { 
+      currentUser: {
+        ...currentUser,
+        // 隐藏敏感信息
+        email: currentUser?.email ? '***' : undefined
+      }
+    });
     return { 
       name: 'WorkUpload',
       currentUser 
     };
   } catch (error) {
-    console.error('获取用户信息失败:', error);
+    console.error('获取初始用户信息失败:', error);
+    // Token可能已过期，清除无效token
+    if (error && typeof error === 'object' && 'response' in error) {
+      const response = (error as any).response;
+      if (response?.status === 401 || response?.status === 403) {
+        console.log('Token可能已过期，将在下次访问时重新登录');
+        // 不在这里清除token，让用户在访问受保护页面时自然跳转到登录页
+      }
+    }
     return { name: 'WorkUpload' };
   }
 }

@@ -3,12 +3,19 @@
   "author": "GttShalee <3193096389@qq.com>",
   "scripts": {
     "build": "max build",
+    "build:analyze": "ANALYZE=1 max build",
+    "build:prod": "NODE_ENV=production max build",
     "dev": "max dev",
     "format": "prettier --cache --write .",
     "postinstall": "max setup",
     "prepare": "husky",
     "setup": "max setup",
-    "start": "npm run dev"
+    "start": "npm run dev",
+    "deploy": "bash deploy.sh",
+    "deploy:check": "npm run build:prod && npm run analyze:bundle",
+    "analyze:bundle": "npx webpack-bundle-analyzer dist/static/js/*.js",
+    "clean": "rm -rf dist node_modules/.cache",
+    "version:info": "node -e \"console.log(JSON.stringify({buildTime: new Date().toISOString(), version: require('./package.json').version}, null, 2))\""
   },
   "dependencies": {
     "@ant-design/charts": "^2.6.0",

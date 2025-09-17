@@ -29,6 +29,7 @@ import { useModel } from '@umijs/max';
 import dayjs from 'dayjs';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { publishHomework, getClassList, uploadFile, CreateHomeworkRequest, ClassResponse } from '@/services/homework';
+import { getCourseSelectOptions, getCourseLabel } from '@/constants/course';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -36,6 +37,7 @@ import { history } from '@umijs/max';
 
 interface HomeworkFormData {
   class_code: string;
+  course_name: string;
   title: string;
   description: string;
   attachment_url?: string;
@@ -153,6 +155,7 @@ const WorkSend: React.FC = () => {
       // 处理时间格式
       const formData: CreateHomeworkRequest & { file_name: string } = {
         class_code: values.class_code,
+        course_name: values.course_name,
         title: values.title,
         description: values.description,
         attachment_url: values.attachment_url,
@@ -247,6 +250,27 @@ const WorkSend: React.FC = () => {
               </Col>
               <Col span={12}>
                 <Form.Item
+                  name="course_name"
+                  label="课程名称"
+                  rules={[
+                    { required: true, message: '请选择课程名称' }
+                  ]}
+                >
+                  <Select
+                    placeholder="请选择课程名称"
+                    options={getCourseSelectOptions()}
+                    showSearch
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
                   name="total_score"
                   label="作业总分"
                   rules={[
@@ -262,6 +286,9 @@ const WorkSend: React.FC = () => {
                     addonAfter="分"
                   />
                 </Form.Item>
+              </Col>
+              <Col span={12}>
+                {/* 预留位置，可以后续添加其他字段 */}
               </Col>
             </Row>
 

@@ -60,6 +60,15 @@ const useUser = () => {
     }
   }, [fetchUserInfo, initialized]);
 
+  // 监听token变化，token存在时自动刷新用户信息
+  useEffect(() => {
+    const token = getToken();
+    if (token && initialized && !userInfo) {
+      console.log('检测到token存在但用户信息为空，自动刷新用户信息');
+      fetchUserInfo();
+    }
+  }, [initialized, userInfo, fetchUserInfo]);
+
   return {
     name,
     setName,

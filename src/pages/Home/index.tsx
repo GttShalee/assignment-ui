@@ -30,7 +30,7 @@ interface Announcement {
 }
 
 const HomePage: React.FC = () => {
-  const { name, userInfo, updateUserInfo } = useModel('global');
+  const { name, userInfo, updateUserInfo, fetchUserInfo, loading } = useModel('global');
   const { refresh } = useModel('@@initialState');
   const [time, setTime] = useState<string>(new Date().toLocaleString());
   const [poem, setPoem] = useState<string>('');
@@ -44,6 +44,24 @@ const HomePage: React.FC = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // 首页加载时主动刷新用户信息
+  useEffect(() => {
+    const refreshUserInfo = async () => {
+      try {
+        console.log('首页加载，刷新用户信息');
+        await fetchUserInfo();
+        // 同时刷新UmiJS的初始状态
+        await refresh();
+      } catch (error) {
+        console.error('首页刷新用户信息失败:', error);
+      }
+    };
+
+    // 延迟500ms执行，让页面先渲染
+    const timer = setTimeout(refreshUserInfo, 500);
+    return () => clearTimeout(timer);
+  }, []); // 只在组件挂载时执行一次
 
   useEffect(() => {
     // 获取notify下存储的最新公告
