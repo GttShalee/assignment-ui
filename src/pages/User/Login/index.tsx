@@ -26,7 +26,6 @@ import styles from './index.less';
 import { login, loginEmail, sendEmailCode, saveToken, convertLoginResponseToUserInfo } from '@/services/auth';
 
 const { Title, Link } = Typography;
-const { TabPane } = Tabs;
 
 const Login: React.FC = () => {
   const [form] = Form.useForm();
@@ -89,6 +88,13 @@ const Login: React.FC = () => {
       
       // 转换并更新用户信息
       const userInfo = convertLoginResponseToUserInfo(response);
+      
+      // 如果登录响应包含courses字段，保存到localStorage
+      if (response.courses !== undefined && response.courses !== null) {
+        console.log('登录成功，保存courses到localStorage:', response.courses);
+        localStorage.setItem('user_courses', response.courses.toString());
+      }
+      
       updateUserInfo(userInfo);
       
       // 刷新UmiJS初始状态，确保全局状态同步
@@ -133,10 +139,17 @@ const Login: React.FC = () => {
           onChange={handleTabChange}
           centered
           className={styles.tabs}
-        >
-          <TabPane tab="学号登录" key="studentId" />
-          <TabPane tab="邮箱登录" key="email" />
-        </Tabs>
+          items={[
+            {
+              key: 'studentId',
+              label: '学号登录'
+            },
+            {
+              key: 'email',
+              label: '邮箱登录'
+            }
+          ]}
+        />
 
         {errorMsg && (
           <Alert

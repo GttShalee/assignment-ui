@@ -1,0 +1,208 @@
+.course-selection-modal {
+  .ant-modal-content {
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .modal-content {
+    padding: 8px;
+
+    .header-section {
+      text-align: center;
+      padding: 24px 0 16px;
+
+      .header-icon {
+        font-size: 48px;
+        color: #1890ff;
+        margin-bottom: 16px;
+        display: block;
+      }
+
+      .header-title {
+        margin-bottom: 8px !important;
+        color: #262626;
+        font-weight: 600;
+      }
+
+      .header-subtitle {
+        font-size: 16px;
+        line-height: 1.6;
+        max-width: 600px;
+        margin: 0 auto;
+        display: block;
+      }
+    }
+
+    .courses-section {
+      padding: 16px 0;
+      min-height: 300px;
+
+      .course-card {
+        border-radius: 12px;
+        border: 2px solid #f0f0f0;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        height: 120px;
+
+        &:hover {
+          border-color: #1890ff;
+          box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
+          transform: translateY(-2px);
+        }
+
+        &.selected {
+          border-color: #1890ff;
+          background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+          box-shadow: 0 4px 16px rgba(24, 144, 255, 0.2);
+
+          .course-title {
+            color: #1890ff !important;
+          }
+
+          .check-icon {
+            color: #52c41a;
+            font-size: 18px;
+            font-weight: bold;
+          }
+        }
+
+        .course-content {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+
+          .course-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+
+            .course-title {
+              margin: 0 !important;
+              font-size: 16px;
+              font-weight: 600;
+              flex: 1;
+            }
+
+            .check-icon {
+              margin-left: 8px;
+              flex-shrink: 0;
+            }
+          }
+
+          .course-description {
+            font-size: 13px;
+            line-height: 1.4;
+            flex: 1;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+        }
+      }
+    }
+
+    .selection-info {
+      text-align: center;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin: 16px 0;
+      border: 1px solid #e9ecef;
+    }
+
+    .footer-section {
+      text-align: center;
+      padding: 16px 0 8px;
+
+      .submit-button {
+        height: 48px;
+        padding: 0 32px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2);
+
+        &:hover {
+          box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+          transform: translateY(-1px);
+        }
+
+        &:disabled {
+          box-shadow: none;
+          transform: none;
+        }
+      }
+    }
+  }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+  .course-selection-modal {
+    .modal-content {
+      .header-section {
+        padding: 16px 0 12px;
+
+        .header-icon {
+          font-size: 36px;
+          margin-bottom: 12px;
+        }
+
+        .header-title {
+          font-size: 20px !important;
+        }
+
+        .header-subtitle {
+          font-size: 14px;
+        }
+      }
+
+      .courses-section {
+        .course-card {
+          height: 110px;
+
+          .course-content {
+            .course-title {
+              font-size: 14px !important;
+            }
+
+            .course-description {
+              font-size: 12px;
+            }
+          }
+        }
+      }
+
+      .footer-section {
+        .submit-button {
+          width: 100%;
+          height: 44px;
+          font-size: 15px;
+        }
+      }
+    }
+  }
+}
+
+// 暗色主题适配
+@media (prefers-color-scheme: dark) {
+  .course-selection-modal {
+    .modal-content {
+      .selection-info {
+        background: #1f1f1f;
+        border-color: #434343;
+      }
+
+      .courses-section {
+        .course-card {
+          &.selected {
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+          }
+        }
+      }
+    }
+  }
+}

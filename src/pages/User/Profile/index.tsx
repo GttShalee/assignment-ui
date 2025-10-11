@@ -34,12 +34,15 @@ import {
   ExclamationCircleOutlined,
   UploadOutlined,
   LockOutlined,
-  KeyOutlined
+  KeyOutlined,
+  BookOutlined
 } from '@ant-design/icons';
 import { useModel } from '@umijs/max';
-import { changeAvatar, changePassword, ChangePasswordRequest, sendEmailCode, updateEmail } from '@/services/auth';
+import { changeAvatar, changePassword, ChangePasswordRequest, sendEmailCode, updateEmail, updateUserCourses } from '@/services/auth';
 import { getFullAvatarUrl } from '@/utils/avatar';
 import { AVATAR_CONFIG, CLASS_CODE_MAP, ROLE_TYPE_MAP } from '@/constants/config';
+import { COURSE_OPTIONS, getCourseByCode } from '@/constants/course';
+import CourseSelectionModal from '@/components/CourseSelectionModal';
 import styles from './index.less';
 
 const { Title, Text } = Typography;
@@ -82,6 +85,7 @@ const UserProfile: React.FC = () => {
   const [fileValidationStatus, setFileValidationStatus] = useState<'valid' | 'invalid' | 'none'>('none');
   const [emailModalVisible, setEmailModalVisible] = useState(false);
   const [updatingEmail, setUpdatingEmail] = useState(false);
+  const [courseModalVisible, setCourseModalVisible] = useState(false);
   const [passwordForm] = Form.useForm();
   const [emailForm] = Form.useForm();
 
@@ -330,6 +334,59 @@ const UserProfile: React.FC = () => {
     }
   };
 
+  // 打开课程编辑弹窗
+  const handleCourseEdit = () => {
+    setCourseModalVisible(true);
+  };
+
+  // 处理课程选择成功
+  const handleCourseSelectionSuccess = async (selectedCourses: number) => {
+    setCourseModalVisible(false);
+    
+    try {
+      message.success('课程更新成功！');
+      
+      // 延迟一下再刷新页面，让用户看到成功提示
+      setTimeout(() => {
+        console.log('课程修改成功，刷新页面以使修改生效');
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      console.error('课程更新处理失败:', error);
+    }
+  };
+
+  // 获取用户选择的课程列表
+  const getUserCourses = () => {
+    if (!userInfo?.courses) return [];
+    
+    const selectedCourses = [];
+    for (const course of COURSE_OPTIONS) {
+      if (userInfo.courses & course.code) {
+        selectedCourses.push(course);
+      }
+    }
+    return selectedCourses;
+  };
+
+  // 渲染课程标签
+  const renderCourseTags = () => {
+    const courses = getUserCourses();
+    if (courses.length === 0) {
+      return <Text type="secondary">未选择课程</Text>;
+    }
+    
+    return (
+      <Space wrap>
+        {courses.map(course => (
+          <Tag key={course.value} color="blue">
+            {course.label}
+          </Tag>
+        ))}
+      </Space>
+    );
+  };
+
   // 文件上传配置
   const uploadProps: UploadProps = {
     fileList,
@@ -572,6 +629,7 @@ const UserProfile: React.FC = () => {
                   { key: 'studentId', label: '学号', value: userInfo?.studentId || '-', icon: <IdcardOutlined /> },
                   { key: 'email', label: '邮箱', value: userInfo?.email || '-', icon: <MailOutlined /> },
                   { key: 'classCode', label: '班级', value: getClassName(userInfo?.classCode), icon: <TeamOutlined /> },
+                  { key: 'courses', label: '选修课程', value: renderCourseTags(), icon: <BookOutlined /> },
                   { key: 'roleType', label: '角色', value: getRoleTag(userInfo?.roleType), icon: <SafetyOutlined /> },
                   { key: 'createdAt', label: '注册时间', value: userInfo?.createdAt ? new Date(userInfo.createdAt).toLocaleString() : '-', icon: <CalendarOutlined /> },
                 ]}
@@ -601,6 +659,18 @@ const UserProfile: React.FC = () => {
                             size="small"
                             icon={<EditOutlined />}
                             onClick={handleEmailEdit}
+                          >
+                            修改
+                          </Button>
+                        );
+                      }
+                      if (record.key === 'courses') {
+                        return (
+                          <Button
+                            type="link"
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={handleCourseEdit}
                           >
                             修改
                           </Button>
@@ -965,6 +1035,13 @@ const UserProfile: React.FC = () => {
             </Form.Item>
           </Form>
         </Modal>
+
+        {/* 课程选择弹窗 */}
+        <CourseSelectionModal
+          open={courseModalVisible}
+          onSuccess={handleCourseSelectionSuccess}
+          initialCourses={userInfo?.courses || undefined}
+        />
       </div>
     </PageContainer>
   );

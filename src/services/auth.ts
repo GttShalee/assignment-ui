@@ -12,6 +12,7 @@ export interface UserInfo {
   role?: string | number | null;
   roleType?: number;
   status?: boolean;
+  courses?: number | null; // 用户选择的课程（二进制位掩码）
   createdAt?: string;
   updatedAt?: string;
 }
@@ -26,6 +27,7 @@ export interface LoginResponse {
   realName: string;
   roleType: number;
   expireTime: string;
+  courses?: number | null; // 用户选择的课程（二进制位掩码）
 }
 
 /**
@@ -141,6 +143,7 @@ export async function getCurrentUser(): Promise<UserInfo> {
     role: response.role,
     roleType: response.roleType,
     status: response.status,
+    courses: response.courses, // 添加courses字段
     createdAt: response.createdAt,
     updatedAt: response.updatedAt,
   };
@@ -167,6 +170,7 @@ export function getToken(): string | null {
  */
 export function clearToken(): void {
   localStorage.removeItem('token');
+  localStorage.removeItem('user_courses'); // 同时清除courses信息
 }
 
 /**
@@ -193,6 +197,7 @@ export function convertLoginResponseToUserInfo(response: any): UserInfo {
     role: response.role,
     roleType: response.roleType,
     status: response.status,
+    courses: response.courses,
     createdAt: response.createdAt,
     updatedAt: response.updatedAt,
   };
@@ -296,6 +301,35 @@ export async function updateEmail(data: UpdateEmailRequest): Promise<string> {
     return response;
   } catch (error: any) {
     console.error('updateEmail错误:', error);
+    throw error;
+  }
+}
+
+// 更新用户课程选择接口
+export interface UpdateCoursesRequest {
+  courses: number; // 课程代码（二进制位掩码）
+}
+
+export async function updateUserCourses(data: UpdateCoursesRequest): Promise<any> {
+  console.log('updateUserCourses函数被调用，参数:', data);
+  
+  try {
+    const response = await request('/api/auth/update-courses', {
+      method: 'POST',
+      data,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    // 更新成功后，同时更新localStorage
+    console.log('课程更新成功，保存到localStorage:', data.courses);
+    localStorage.setItem('user_courses', data.courses.toString());
+    
+    console.log('updateUserCourses响应:', response);
+    return response;
+  } catch (error: any) {
+    console.error('updateUserCourses错误:', error);
     throw error;
   }
 }

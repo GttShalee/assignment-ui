@@ -29,7 +29,7 @@ import { useModel } from '@umijs/max';
 import dayjs from 'dayjs';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { publishHomework, getClassList, uploadFile, CreateHomeworkRequest, ClassResponse } from '@/services/homework';
-import { getCourseSelectOptions, getCourseLabel } from '@/constants/course';
+import { getCourseSelectOptions, getCourseLabel, getCourseCode } from '@/constants/course';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -152,10 +152,14 @@ const WorkSend: React.FC = () => {
   const handleSubmit = async (values: HomeworkFormData & { file_name: string }) => {
     setLoading(true);
     try {
+      // 根据选择的课程名称获取对应的课程代码
+      const courseCode = getCourseCode(values.course_name);
+      
       // 处理时间格式
       const formData: CreateHomeworkRequest & { file_name: string } = {
         class_code: values.class_code,
         course_name: values.course_name,
+        course_code: courseCode, // 添加课程代码
         title: values.title,
         description: values.description,
         attachment_url: values.attachment_url,
@@ -167,6 +171,7 @@ const WorkSend: React.FC = () => {
       };
 
       console.log('提交的作业数据:', formData);
+      console.log('课程代码映射:', { course_name: values.course_name, course_code: courseCode });
       
       // 调用后端API发布作业
       const response = await publishHomework(formData);

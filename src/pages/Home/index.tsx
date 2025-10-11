@@ -8,6 +8,7 @@ import styles from './index.less';
 import { POEMS } from '@/constants/poem';
 import { announcements, UpdateItem } from '../notify/announcementData';
 import EmailUpdateModal from '@/components/EmailUpdateModal';
+import CourseSelectionModal from '@/components/CourseSelectionModal';
 import { updateEmail, getCurrentUser } from '@/services/auth';
 
 function getGreeting() {
@@ -36,6 +37,7 @@ const HomePage: React.FC = () => {
   const [poem, setPoem] = useState<string>('');
   const [latestAnnouncement, setLatestAnnouncement] = useState<Announcement | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showCourseModal, setShowCourseModal] = useState(false);
 
   useEffect(() => {
     setPoem(POEMS[Math.floor(Math.random() * POEMS.length)]);
@@ -45,16 +47,23 @@ const HomePage: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // 首页加载时主动刷新用户信息
+  // 首页加载时不自动刷新用户信息，避免覆盖courses字段
   useEffect(() => {
+    // 如果用户信息已存在，就不需要刷新了
+    if (userInfo) {
+      console.log('首页加载，用户信息已存在，跳过刷新');
+      console.log('当前用户信息:', userInfo);
+      return;
+    }
+    
     const refreshUserInfo = async () => {
       try {
-        console.log('首页加载，刷新用户信息');
+        console.log('首页加载，用户信息不存在，开始获取用户信息');
         await fetchUserInfo();
         // 同时刷新UmiJS的初始状态
         await refresh();
       } catch (error) {
-        console.error('首页刷新用户信息失败:', error);
+        console.error('首页获取用户信息失败:', error);
       }
     };
 
@@ -76,17 +85,44 @@ const HomePage: React.FC = () => {
     return email === studentId;
   };
 
-  // 邮箱检查逻辑 - 页面加载后检查
+  // 课程选择检查逻辑 - 页面加载后检查
   useEffect(() => {
-    // 延迟一秒后检查，让用户先看到首页内容
+    // 延迟1500ms后检查，确保用户信息已经完全加载
     const timer = setTimeout(() => {
-      if (userInfo && checkEmailAndStudentId()) {
-        setShowEmailModal(true);
+      console.log('首页课程检查 - 用户信息:', userInfo);
+      console.log('首页课程检查 - courses字段:', userInfo?.courses);
+      console.log('首页课程检查 - courses类型:', typeof userInfo?.courses);
+      
+      if (!userInfo) {
+        console.log('用户信息为空，跳过课程检查');
+        return;
       }
-    }, 1000);
+      
+      if (userInfo.courses === null || userInfo.courses === undefined || userInfo.courses === 0) {
+        console.log('用户未选择课程，显示课程选择弹窗');
+        setShowCourseModal(true);
+      } else if (userInfo.courses && userInfo.courses > 0) {
+        console.log('用户已选择课程，不显示课程选择弹窗', { courses: userInfo.courses });
+      } else {
+        console.log('courses字段异常:', userInfo.courses);
+      }
+    }, 1500); // 增加延迟时间，确保用户信息刷新完成
 
     return () => clearTimeout(timer);
   }, [userInfo]);
+
+  // 邮箱检查逻辑 - 页面加载后检查（在课程选择之后）
+  useEffect(() => {
+    // 延迟1.5秒后检查，让课程选择弹窗先显示
+    const timer = setTimeout(() => {
+      // 只有在没有显示课程选择弹窗时才检查邮箱
+      if (userInfo && !showCourseModal && checkEmailAndStudentId()) {
+        setShowEmailModal(true);
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [userInfo, showCourseModal]);
 
   // 处理邮箱更新成功
   const handleEmailUpdateSuccess = async (newEmail: string) => {
@@ -120,6 +156,39 @@ const HomePage: React.FC = () => {
   const handleEmailUpdateCancel = () => {
     setShowEmailModal(false);
     message.info('您可以稍后在个人设置中修改邮箱');
+  };
+
+  // 处理课程选择成功
+  const handleCourseSelectionSuccess = async (selectedCourses: number) => {
+    setShowCourseModal(false);
+    
+    try {
+      // 重新获取最新的用户信息
+      const latestUserInfo = await getCurrentUser();
+      
+      // 更新全局用户信息（global model）
+      updateUserInfo({ ...latestUserInfo, courses: selectedCourses });
+      
+      // 刷新UmiJS的初始状态
+      await refresh();
+      
+      console.log('用户课程信息已更新:', { ...latestUserInfo, courses: selectedCourses });
+      
+      // 课程选择完成后，检查是否需要显示邮箱更新弹窗
+      setTimeout(() => {
+        if (checkEmailAndStudentId()) {
+          setShowEmailModal(true);
+        }
+      }, 500);
+    } catch (error) {
+      console.error('获取最新用户信息失败:', error);
+      // 如果获取失败，至少更新课程字段
+      if (userInfo) {
+        const updatedUserInfo = { ...userInfo, courses: selectedCourses };
+        updateUserInfo(updatedUserInfo);
+        await refresh();
+      }
+    }
   };
 
   // 获取公告类型对应的颜色
@@ -220,9 +289,15 @@ const HomePage: React.FC = () => {
         <div style={{ fontSize: 16, fontStyle: 'italic', color: '#666', marginBottom: 32 }}>{poem}</div>
       </div>
 
+      {/* 课程选择弹窗 */}
+      <CourseSelectionModal
+        open={showCourseModal}
+        onSuccess={handleCourseSelectionSuccess}
+      />
+
       {/* 邮箱更新弹窗 */}
       <EmailUpdateModal
-        visible={showEmailModal}
+        open={showEmailModal}
         onCancel={handleEmailUpdateCancel}
         onSuccess={handleEmailUpdateSuccess}
         currentEmail={userInfo?.email || ''}

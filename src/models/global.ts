@@ -21,8 +21,36 @@ const useUser = () => {
     try {
       setLoading(true);
       const user = await getCurrentUser();
+      console.log('全局模型 - getCurrentUser返回的用户信息:', user);
+      console.log('全局模型 - courses字段:', user?.courses);
+      
       if (user && user.realName) {
-        setUserInfo(user);
+        // 使用函数式更新来保留现有的courses字段
+        setUserInfo(prevUserInfo => {
+          const finalUser = { ...user };
+          
+          // 如果API没有返回courses字段，尝试从localStorage恢复
+          if (user.courses === undefined || user.courses === null) {
+            // 首先尝试从之前的用户信息中获取
+            if (prevUserInfo?.courses !== undefined && prevUserInfo?.courses !== null) {
+              console.log('全局模型 - 从之前的用户信息保留courses字段:', prevUserInfo.courses);
+              finalUser.courses = prevUserInfo.courses;
+            } else {
+              // 如果之前的用户信息也没有，从localStorage恢复
+              const savedCourses = localStorage.getItem('user_courses');
+              if (savedCourses) {
+                const coursesValue = parseInt(savedCourses, 10);
+                if (!isNaN(coursesValue)) {
+                  console.log('全局模型 - 从localStorage恢复courses字段:', coursesValue);
+                  finalUser.courses = coursesValue;
+                }
+              }
+            }
+          }
+          
+          console.log('全局模型 - 用户信息已更新:', finalUser);
+          return finalUser;
+        });
         setName(user.realName);
       } else {
         console.warn('获取到的用户信息不完整:', user);
@@ -40,9 +68,12 @@ const useUser = () => {
 
   // 更新用户信息
   const updateUserInfo = useCallback((user: UserInfo) => {
+    console.log('全局模型 - updateUserInfo被调用:', user);
+    console.log('全局模型 - updateUserInfo courses字段:', user?.courses);
     if (user && user.realName) {
       setUserInfo(user);
       setName(user.realName);
+      console.log('全局模型 - 用户信息已通过updateUserInfo更新:', user);
     }
   }, []);
 

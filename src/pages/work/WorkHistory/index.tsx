@@ -27,7 +27,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { getMySubmissionHistory, HistorySubmission } from '@/services/homework';
+import { getMySubmissionHistory, HistorySubmission, downloadMyHomework } from '@/services/homework';
 import { getCourseLabel } from '@/constants/course';
 import { API_BASE_URL } from '@/constants/config';
 import { getToken } from '@/services/auth';
@@ -132,52 +132,24 @@ const WorkHistory: React.FC = () => {
     applyFilters();
   }, [searchKeyword, selectedCourse, selectedStatus, dateRange, allSubmissions]);
 
-  // 下载文件
-  const handleDownload = async (downloadUrl: string, fileName: string) => {
-    if (!downloadUrl) {
-      message.error('文件链接不存在');
+  // 下载文件 - 使用简化的后端接口
+  const handleDownload = (homeworkId: number, fileName: string) => {
+    if (!homeworkId) {
+      message.error('作业ID不存在');
       return;
     }
 
     try {
-      // 构建完整的下载链接
-      const fullDownloadUrl = downloadUrl.startsWith('http') 
-        ? downloadUrl 
-        : `${API_BASE_URL}${downloadUrl}`;
-      
-      // 使用fetch获取文件内容
-      const response = await fetch(fullDownloadUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${getToken()}`,
-        },
+      console.log('下载文件:', {
+        homeworkId: homeworkId,
+        fileName: fileName
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      // 获取文件内容作为Blob
-      const blob = await response.blob();
-      
-      // 创建下载链接
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName || '作业文件';
-      link.style.display = 'none';
-      
-      // 添加到DOM并触发点击
-      document.body.appendChild(link);
-      link.click();
-      
-      // 清理DOM和URL对象
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
+      // 使用iframe下载，避免重定向问题
+      downloadMyHomework(homeworkId);
       message.success('开始下载文件');
-    } catch (error) {
-      message.error('下载失败，请稍后重试');
+    } catch (error: any) {
+      message.error(error.message || '下载失败，请稍后重试');
       console.error('下载文件失败:', error);
     }
   };
@@ -266,7 +238,7 @@ const WorkHistory: React.FC = () => {
         <Button
           type="primary"
           icon={<DownloadOutlined />}
-          onClick={() => handleDownload(record.download_url, record.submission_file_name)}
+          onClick={() => handleDownload(record.homework_id, record.submission_file_name)}
           size="small"
         >
           下载

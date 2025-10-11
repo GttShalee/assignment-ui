@@ -16,6 +16,21 @@ export interface Announcement {
 
 export const announcements: Announcement[] = [
   {
+    id: 5,
+    title: '添加邮箱提醒功能',
+    summary: '在发布作业和截止前2小时通过邮箱发送提醒',
+    updates: [
+      { content: '更新邮箱', status: 'new' },
+      { content: '邮箱提醒', status: 'new' },
+      { content: '历史提交记录', status: 'new' },
+      { content: '由于路径问题，用户不能下载自己的历史提交文件', status: 'fixed' },
+    ],
+    date: '2025-9-17 21:54',
+    type: 'success',
+    version: 'v1.1.0',
+    author: 'Shalee'
+  },
+  {
     id: 4,
     title: '核心功能完成',
     summary: '用户上传作业功能基本闭环',

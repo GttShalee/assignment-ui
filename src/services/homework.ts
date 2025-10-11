@@ -1,10 +1,12 @@
 import { request } from '@umijs/max';
+import { getToken } from './auth';
 
 // 作业接口类型定义
 export interface Homework {
   id: number;
   class_code: string;   // 班级代码
   course_name: string;  // 课程名称
+  course_code?: number; // 课程代码（二进制位掩码）
   title: string;
   description: string;
   attachment_url: string | null;   // 附件
@@ -22,6 +24,7 @@ export interface Homework {
 export interface CreateHomeworkRequest {
   class_code: string;
   course_name: string;  // 课程名称
+  course_code: number;  // 课程代码（二进制位掩码）
   title: string;
   description: string;
   file_name?: string;
@@ -121,6 +124,7 @@ export async function getHomeworkList(params?: {
   status?: number;
   page?: number;
   pageSize?: number;
+  courses?: number; // 用户选择的课程（二进制位掩码）
 }): Promise<{
   content: Homework[];
   pageable: {
@@ -304,4 +308,17 @@ export async function getMySubmissionHistory(params?: {
     method: 'GET',
     params,
   });
+}
+
+// 下载我的作业文件 - 直接调用API接口
+export function downloadMyHomework(homeworkId: number): void {
+  const downloadUrl = `/api/homework-submission/download/${homeworkId}`;
+  
+  // 直接在当前窗口打开下载链接
+  window.location.href = downloadUrl;
+}
+
+// 为了向后兼容，保留原有函数但使用新接口实现
+export function downloadFile(homeworkId: number): void {
+  return downloadMyHomework(homeworkId);
 } 
