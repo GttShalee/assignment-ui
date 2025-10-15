@@ -66,7 +66,7 @@ const WorkHistory: React.FC = () => {
         pageSize: 1000, // 获取较大数量的数据，实际项目中可能需要分批获取
       });
 
-      console.log('历史提交记录响应:', response);
+      console.log('WorkHistory - 历史提交记录响应:', response);
 
       const historyList = response.content || [];
       setAllSubmissions(historyList);
@@ -79,15 +79,17 @@ const WorkHistory: React.FC = () => {
       }));
     } catch (error) {
       message.error('获取历史提交记录失败');
-      console.error('获取历史提交记录错误:', error);
+      console.error('WorkHistory - 获取历史提交记录错误:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  // 组件挂载时获取数据
   useEffect(() => {
+    console.log('WorkHistory - 组件挂载，获取历史提交记录');
     fetchSubmissionHistory();
-  }, []);
+  }, []); // 空依赖，只在挂载时执行一次
 
   // 筛选逻辑
   const applyFilters = () => {

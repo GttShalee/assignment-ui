@@ -3,7 +3,7 @@ import { Modal, Form, Input, Button, message, Alert } from 'antd';
 import { MailOutlined } from '@ant-design/icons';
 
 interface EmailUpdateModalProps {
-  open: boolean;
+  visible: boolean;
   onCancel: () => void;
   onSuccess: (newEmail: string) => void;
   currentEmail: string;
@@ -11,7 +11,7 @@ interface EmailUpdateModalProps {
 }
 
 const EmailUpdateModal: React.FC<EmailUpdateModalProps> = ({
-  open,
+  visible,
   onCancel,
   onSuccess,
   currentEmail,
@@ -53,7 +53,7 @@ const EmailUpdateModal: React.FC<EmailUpdateModalProps> = ({
           <span>更新邮箱地址</span>
         </div>
       }
-      open={open}
+      open={visible}
       onCancel={handleCancel}
       footer={null}
       width={500}

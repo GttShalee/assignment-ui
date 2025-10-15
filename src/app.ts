@@ -1,8 +1,6 @@
 // 运行时配置
-import React from 'react';
 import { getToken, getCurrentUser } from '@/services/auth';
 import { history } from '@umijs/max';
-import MobileSiderController from '@/components/MobileSiderController';
 
 // 全局初始化数据配置，用于 Layout 用户信息和权限初始化
 // 更多信息见文档：https://umijs.org/docs/api/runtime-config#getinitialstate
@@ -57,7 +55,7 @@ export const layout = () => {
     // 侧边栏配置
     siderWidth: 256,
     collapsed: false,
-    // 显示默认的折叠按钮，移动端需要
+    collapsedButtonRender: false, // 隐藏折叠按钮
     // 头部配置
     headerHeight: 64,
     // 面包屑配置
@@ -66,23 +64,7 @@ export const layout = () => {
     },
     // 页脚配置
     footerRender: false, // 隐藏页脚
-    // 移动端配置
-    breakpoint: 'lg', // 在lg断点以下自动折叠
-    collapsedWidth: 0, // 移动端完全隐藏侧边栏
-    // 移动端侧边栏配置
-    mobileMenu: true, // 启用移动端菜单
-    fixedHeader: true, // 固定头部
-    fixedSider: false, // 移动端不固定侧边栏
-    // 自定义侧边栏渲染
-    siderMenuRender: (props: any) => {
-      return props;
-    },
   };
-};
-
-// 根容器配置，用于包装整个应用
-export const rootContainer = (container: React.ReactElement) => {
-  return React.createElement(MobileSiderController, { children: container });
 };
 
 // 请求拦截器配置

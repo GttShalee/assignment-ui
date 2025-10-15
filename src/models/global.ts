@@ -1,16 +1,17 @@
 // 全局共享数据
 import { DEFAULT_NAME } from '@/constants';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { UserInfo, getCurrentUser, getToken } from '@/services/auth';
 
 const useUser = () => {
   const [name, setName] = useState<string>(DEFAULT_NAME);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [initialized, setInitialized] = useState<boolean>(false);
+  const initializedRef = useRef<boolean>(false);
+  const fetchingRef = useRef<boolean>(false); // 防止重复请求
 
   // 获取用户信息
-  const fetchUserInfo = useCallback(async () => {
+  const fetchUserInfo = useCallback(async (force: boolean = false) => {
     const token = getToken();
     if (!token) {
       setUserInfo(null);
@@ -18,25 +19,30 @@ const useUser = () => {
       return;
     }
 
+    // 防止重复请求
+    if (fetchingRef.current && !force) {
+      console.log('全局模型 - 已有请求在进行中，跳过');
+      return;
+    }
+
     try {
+      fetchingRef.current = true;
       setLoading(true);
       const user = await getCurrentUser();
       console.log('全局模型 - getCurrentUser返回的用户信息:', user);
-      console.log('全局模型 - courses字段:', user?.courses);
       
       if (user && user.realName) {
-        // 使用函数式更新来保留现有的courses字段
+        // 使用函数式更新来保留现有的courses和nickname字段
         setUserInfo(prevUserInfo => {
           const finalUser = { ...user };
           
-          // 如果API没有返回courses字段，尝试从localStorage恢复
+          // 如果API没有返回courses字段，尝试从之前的状态恢复
           if (user.courses === undefined || user.courses === null) {
-            // 首先尝试从之前的用户信息中获取
             if (prevUserInfo?.courses !== undefined && prevUserInfo?.courses !== null) {
               console.log('全局模型 - 从之前的用户信息保留courses字段:', prevUserInfo.courses);
               finalUser.courses = prevUserInfo.courses;
             } else {
-              // 如果之前的用户信息也没有，从localStorage恢复
+              // 从localStorage恢复
               const savedCourses = localStorage.getItem('user_courses');
               if (savedCourses) {
                 const coursesValue = parseInt(savedCourses, 10);
@@ -45,6 +51,14 @@ const useUser = () => {
                   finalUser.courses = coursesValue;
                 }
               }
+            }
+          }
+          
+          // 如果API没有返回nickname字段，尝试从之前的状态恢复
+          if (user.nickname === undefined || user.nickname === null) {
+            if (prevUserInfo?.nickname) {
+              console.log('全局模型 - 从之前的用户信息保留nickname字段:', prevUserInfo.nickname);
+              finalUser.nickname = prevUserInfo.nickname;
             }
           }
           
@@ -63,13 +77,13 @@ const useUser = () => {
       setName(DEFAULT_NAME);
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
-  }, []);
+  }, []); // 移除所有依赖，避免循环
 
   // 更新用户信息
   const updateUserInfo = useCallback((user: UserInfo) => {
     console.log('全局模型 - updateUserInfo被调用:', user);
-    console.log('全局模型 - updateUserInfo courses字段:', user?.courses);
     if (user && user.realName) {
       setUserInfo(user);
       setName(user.realName);
@@ -81,24 +95,20 @@ const useUser = () => {
   const clearUserInfo = useCallback(() => {
     setUserInfo(null);
     setName(DEFAULT_NAME);
+    initializedRef.current = false;
   }, []);
 
-  // 组件挂载时获取用户信息
+  // 组件挂载时获取用户信息（只执行一次）
   useEffect(() => {
-    if (!initialized) {
-      fetchUserInfo();
-      setInitialized(true);
+    if (!initializedRef.current) {
+      const token = getToken();
+      if (token) {
+        console.log('全局模型 - 初始化，获取用户信息');
+        fetchUserInfo();
+        initializedRef.current = true;
+      }
     }
-  }, [fetchUserInfo, initialized]);
-
-  // 监听token变化，token存在时自动刷新用户信息
-  useEffect(() => {
-    const token = getToken();
-    if (token && initialized && !userInfo) {
-      console.log('检测到token存在但用户信息为空，自动刷新用户信息');
-      fetchUserInfo();
-    }
-  }, [initialized, userInfo, fetchUserInfo]);
+  }, []); // 空依赖数组，只在挂载时执行一次
 
   return {
     name,

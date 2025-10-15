@@ -26,6 +26,7 @@ import styles from './index.less';
 import { login, loginEmail, sendEmailCode, saveToken, convertLoginResponseToUserInfo } from '@/services/auth';
 
 const { Title, Link } = Typography;
+const { TabPane } = Tabs;
 
 const Login: React.FC = () => {
   const [form] = Form.useForm();
@@ -139,17 +140,10 @@ const Login: React.FC = () => {
           onChange={handleTabChange}
           centered
           className={styles.tabs}
-          items={[
-            {
-              key: 'studentId',
-              label: '学号登录'
-            },
-            {
-              key: 'email',
-              label: '邮箱登录'
-            }
-          ]}
-        />
+        >
+          <TabPane tab="学号登录" key="studentId" />
+          <TabPane tab="邮箱登录" key="email" />
+        </Tabs>
 
         {errorMsg && (
           <Alert

@@ -49,6 +49,7 @@ dayjs.extend(duration);
 dayjs.extend(relativeTime);
 
 const { Title, Text } = Typography;
+const { TabPane } = Tabs;
 const { confirm } = Modal;
 const { TextArea } = Input;
 const { Countdown } = Statistic;
@@ -151,34 +152,28 @@ const WorkList: React.FC = () => {
 
   // 获取作业列表
   const fetchHomeworks = async () => {
+    if (!userInfo) {
+      console.log('WorkList - 用户信息为空，跳过获取作业列表');
+      return;
+    }
+
     setLoading(true);
     try {
       // 构建请求参数，包含用户的courses信息
       const params: any = {};
       
       // 如果用户已选择课程，传送courses参数
-      if (userInfo?.courses && userInfo.courses > 0) {
+      if (userInfo.courses && userInfo.courses > 0) {
         params.courses = userInfo.courses;
-        console.log('获取作业列表，传送用户课程信息:', userInfo.courses);
+        console.log('WorkList - 获取作业列表，传送用户课程信息:', userInfo.courses);
       } else {
-        console.log('用户未选择课程或courses为空，获取所有作业');
+        console.log('WorkList - 用户未选择课程或courses为空，获取所有作业');
       }
       
       const response = await getHomeworkList(params);
       const homeworksList = response.content || [];
       
-      // 调试信息：打印每个作业的提交状态
-      console.log('作业列表数据:', homeworksList.map(hw => ({
-        id: hw.id,
-        title: hw.title,
-        course_name: hw.course_name,
-        course_code: hw.course_code,
-        status: hw.status,
-        submission_status: hw.submission_status,
-        submission_status_type: typeof hw.submission_status,
-        deadline: hw.deadline
-      })));
-      
+      console.log('WorkList - 作业列表数据:', homeworksList.length, '条');
       setHomeworks(homeworksList);
     } catch (error) {
       message.error('获取作业列表失败');
@@ -188,14 +183,10 @@ const WorkList: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchHomeworks();
-  }, []);
-
-  // 当用户信息变化时（特别是courses字段），重新获取作业列表
+  // 当用户信息加载完成后，获取作业列表
   useEffect(() => {
     if (userInfo) {
-      console.log('用户信息变化，重新获取作业列表');
+      console.log('WorkList - 用户信息已加载，获取作业列表');
       
       // 检查当前筛选的课程是否还在用户选择的课程中
       if (selectedCourseFilter && userInfo.courses) {
@@ -203,14 +194,14 @@ const WorkList: React.FC = () => {
         const isCurrentFilterValid = userCourseOptions.some(option => option.value === selectedCourseFilter);
         
         if (!isCurrentFilterValid) {
-          console.log('当前筛选的课程不在用户选择的课程中，清除筛选');
+          console.log('WorkList - 当前筛选的课程不在用户选择的课程中，清除筛选');
           setSelectedCourseFilter(undefined);
         }
       }
       
       fetchHomeworks();
     }
-  }, [userInfo?.courses]);
+  }, [userInfo]);
 
   // 获取用户选择的课程选项（用于筛选下拉框）
   const getUserCourseOptions = () => {
@@ -1113,89 +1104,97 @@ const WorkList: React.FC = () => {
               )}
             </div>
           }
-          items={[
-            {
-              key: 'ongoing',
-              label: (
-                <span>
-                  <ClockCircleOutlined />
-                  正在进行 ({categorizedHomeworks.ongoing.length})
-                </span>
-              ),
-              children: categorizedHomeworks.ongoing.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                  <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
-                  <div style={{ fontSize: '16px', color: '#666' }}>当前没有进行中的作业</div>
-                </div>
-              ) : (
-                <Table
-                  columns={columns}
-                  dataSource={categorizedHomeworks.ongoing}
-                  rowKey="id"
-                  loading={loading}
-                  pagination={{ pageSize: 10 }}
-                  scroll={{ x: 1200 }}
-                />
-              )
-            },
-            {
-              key: 'submitted',
-              label: (
-                <span>
-                  <CheckCircleOutlined />
-                  已提交 ({categorizedHomeworks.submitted.length})
-                </span>
-              ),
-              children: categorizedHomeworks.submitted.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                  <WarningOutlined style={{ fontSize: '48px', color: '#faad14', marginBottom: '16px' }} />
-                  <div style={{ fontSize: '16px', color: '#666' }}>暂无已提交的作业</div>
-                </div>
-              ) : (
-                <Table
-                  columns={submittedColumns}
-                  dataSource={categorizedHomeworks.submitted}
-                  rowKey="id"
-                  loading={loading}
-                  pagination={{ pageSize: 10 }}
-                  scroll={{ x: 1200 }}
-                />
-              )
-            },
-            {
-              key: 'overdue',
-              label: (
-                <span>
-                  <WarningOutlined />
-                  未提交 ({categorizedHomeworks.overdue.length})
-                </span>
-              ),
-              children: categorizedHomeworks.overdue.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                  <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
-                  <div style={{ fontSize: '16px', color: '#666' }}>没有逾期未提交的作业</div>
-                </div>
-              ) : (
-                <Table
-                  columns={columns}
-                  dataSource={categorizedHomeworks.overdue}
-                  rowKey="id"
-                  loading={loading}
-                  pagination={{ pageSize: 10 }}
-                  scroll={{ x: 1200 }}
-                />
-              )
-            },
-            // 已截止作业Tab - 只有学委和管理员可以看到
-            ...(userInfo?.roleType === 0 || userInfo?.roleType === 2 ? [{
-              key: 'expired',
-              label: (
+        >
+          <TabPane
+            tab={
+              <span>
+                <ClockCircleOutlined />
+                正在进行 ({categorizedHomeworks.ongoing.length})
+              </span>
+            }
+            key="ongoing"
+          >
+            {categorizedHomeworks.ongoing.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
+                <div style={{ fontSize: '16px', color: '#666' }}>当前没有进行中的作业</div>
+              </div>
+            ) : (
+                             <Table
+                 columns={columns}
+                 dataSource={categorizedHomeworks.ongoing}
+                 rowKey="id"
+                 loading={loading}
+                 pagination={{ pageSize: 10 }}
+                 scroll={{ x: 1200 }}
+               />
+            )}
+          </TabPane>
+
+          <TabPane
+            tab={
+              <span>
+                <CheckCircleOutlined />
+                已提交 ({categorizedHomeworks.submitted.length})
+              </span>
+            }
+            key="submitted"
+          >
+            {categorizedHomeworks.submitted.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <WarningOutlined style={{ fontSize: '48px', color: '#faad14', marginBottom: '16px' }} />
+                <div style={{ fontSize: '16px', color: '#666' }}>暂无已提交的作业</div>
+              </div>
+            ) : (
+              <Table
+                columns={submittedColumns}
+                dataSource={categorizedHomeworks.submitted}
+                rowKey="id"
+                loading={loading}
+                pagination={{ pageSize: 10 }}
+                scroll={{ x: 1200 }}
+              />
+            )}
+          </TabPane>
+
+          <TabPane
+            tab={
+              <span>
+                <WarningOutlined />
+                未提交 ({categorizedHomeworks.overdue.length})
+              </span>
+            }
+            key="overdue"
+          >
+            {categorizedHomeworks.overdue.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
+                <div style={{ fontSize: '16px', color: '#666' }}>没有逾期未提交的作业</div>
+              </div>
+            ) : (
+                             <Table
+                 columns={columns}
+                 dataSource={categorizedHomeworks.overdue}
+                 rowKey="id"
+                 loading={loading}
+                 pagination={{ pageSize: 10 }}
+                 scroll={{ x: 1200 }}
+               />
+            )}
+          </TabPane>
+
+          {/* 已截止作业Tab - 只有学委和管理员可以看到 */}
+          {(userInfo?.roleType === 0 || userInfo?.roleType === 2) && (
+            <TabPane
+              tab={
                 <span>
                   <ClockCircleOutlined />
                   已截止 ({categorizedHomeworks.expired.length})
                 </span>
-              ),
-              children: categorizedHomeworks.expired.length === 0 ? (
+              }
+              key="expired"
+            >
+              {categorizedHomeworks.expired.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0' }}>
                   <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
                   <div style={{ fontSize: '16px', color: '#666' }}>没有已截止的作业</div>
@@ -1209,18 +1208,22 @@ const WorkList: React.FC = () => {
                   pagination={{ pageSize: 10 }}
                   scroll={{ x: 1200 }}
                 />
-              )
-            }] : []),
-            // 归档作业Tab - 只有学委和管理员可以看到
-            ...(userInfo?.roleType === 0 || userInfo?.roleType === 2 ? [{
-              key: 'archived',
-              label: (
+              )}
+            </TabPane>
+          )}
+
+          {/* 归档作业Tab - 只有学委和管理员可以看到 */}
+          {(userInfo?.roleType === 0 || userInfo?.roleType === 2) && (
+            <TabPane
+              tab={
                 <span>
                   <FileOutlined />
                   归档 ({categorizedHomeworks.archived.length})
                 </span>
-              ),
-              children: categorizedHomeworks.archived.length === 0 ? (
+              }
+              key="archived"
+            >
+              {categorizedHomeworks.archived.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0' }}>
                   <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
                   <div style={{ fontSize: '16px', color: '#666' }}>没有归档的作业</div>
@@ -1234,16 +1237,16 @@ const WorkList: React.FC = () => {
                   pagination={{ pageSize: 10 }}
                   scroll={{ x: 1200 }}
                 />
-              )
-            }] : [])
-          ]}
-        />
+              )}
+            </TabPane>
+          )}
+        </Tabs>
       </Card>
 
       {/* 作业详情模态框 */}
       <Modal
         title={selectedHomework?.title || '作业详情'}
-        open={modalVisible}
+        visible={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
         width={700}
@@ -1310,7 +1313,7 @@ const WorkList: React.FC = () => {
       {/* 编辑作业模态框 */}
       <Modal
         title="编辑作业"
-        open={editModalVisible}
+        visible={editModalVisible}
         onCancel={() => setEditModalVisible(false)}
         footer={null}
         width={600}
@@ -1415,7 +1418,7 @@ const WorkList: React.FC = () => {
       {/* 提交作业模态框 */}
       <Modal
         title="提交作业"
-        open={submitModalVisible}
+        visible={submitModalVisible}
         onCancel={() => setSubmitModalVisible(false)}
         footer={null}
         width={600}
@@ -1508,7 +1511,7 @@ const WorkList: React.FC = () => {
             ? '(进行中)' 
             : '(已截止)'
         }`}
-        open={submissionsModalVisible}
+        visible={submissionsModalVisible}
         onCancel={() => setSubmissionsModalVisible(false)}
         footer={[
           <Button key="debug" onClick={() => {
@@ -1673,7 +1676,7 @@ const WorkList: React.FC = () => {
       {/* 查看未提交成员模态框 */}
       <Modal
         title={`未提交名单 - ${currentViewingHomework?.title || ''}`}
-        open={unsubmittedModalVisible}
+        visible={unsubmittedModalVisible}
         onCancel={() => setUnsubmittedModalVisible(false)}
         footer={[
           <Button key="close" onClick={() => setUnsubmittedModalVisible(false)}>

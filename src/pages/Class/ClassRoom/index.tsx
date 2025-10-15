@@ -25,6 +25,7 @@ import { useModel } from '@umijs/max';
 import { getClassMembers, ClassMember } from '@/services/classroom';
 import { getFullAvatarUrl } from '@/utils/avatar';
 import { CLASS_CODE_MAP, ROLE_TYPE_MAP } from '@/constants/config';
+import HomeworkSubmissionRecords from '@/components/HomeworkSubmissionRecords';
 
 const { Title, Text } = Typography;
 const { Search } = Input;
@@ -35,12 +36,12 @@ const ClassRoom: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 5; // 每页显示5个用户
+  const pageSize = 7; // 每页显示5个用户
 
   // 获取班级成员列表
   const fetchClassMembers = async () => {
     if (!userInfo?.classCode) {
-      message.error('无法获取班级信息');
+      console.log('ClassRoom - 用户班级代码为空，跳过获取班级成员');
       return;
     }
 
@@ -59,17 +60,22 @@ const ClassRoom: React.FC = () => {
         };
       });
       
+      console.log('ClassRoom - 获取班级成员成功:', processedMembers.length, '人');
       setMembers(processedMembers);
     } catch (error) {
       message.error('获取班级成员失败');
-      console.error('获取班级成员失败:', error);
+      console.error('ClassRoom - 获取班级成员失败:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  // 当用户信息加载完成后，获取班级成员
   useEffect(() => {
-    fetchClassMembers();
+    if (userInfo?.classCode) {
+      console.log('ClassRoom - 用户信息已加载，班级代码:', userInfo.classCode);
+      fetchClassMembers();
+    }
   }, [userInfo?.classCode]);
 
   // 过滤成员列表
@@ -208,28 +214,11 @@ const ClassRoom: React.FC = () => {
           </Card>
         </Col>
 
-        {/* 右侧：两个空白板块 */}
+        {/* 右侧：作业提交动态和其他板块 */}
         <Col xs={24} lg={12}>
           <Space direction="vertical" style={{ width: '100%' }} size={24}>
-            {/* 第一个空白板块 */}
-            <Card 
-              title="板块一" 
-              style={{ minHeight: 300 }}
-              extra={<Button type="link">更多</Button>}
-            >
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                height: 200,
-                color: '#999'
-              }}>
-                <Empty 
-                  description="待开发功能" 
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                />
-              </div>
-            </Card>
+            {/* 作业提交记录板块 */}
+            <HomeworkSubmissionRecords pageSize={8} />
 
             {/* 第二个空白板块 */}
             <Card 

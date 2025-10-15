@@ -6,9 +6,6 @@ export default defineConfig({
   model: {},
   initialState: {},
   request: {},
-  define: {
-    API_BASE_URL: process.env.NODE_ENV === 'production' ? 'http://101.201.46.184:8080' : 'http://localhost:8080',
-  },
   layout: {
     title: "WorkUpload",
   },
@@ -75,9 +72,15 @@ export default defineConfig({
           component:"./Class/ClassRoom",
         },
         {
-          name: "班级广场",
+          name: "班级论坛",
           path:"/Class/ClassSquare",
           component:"./Class/ClassSquare",
+        },
+        {
+          name: "帖子详情",
+          path:"/Class/PostDetail/:id",
+          component:"./Class/PostDetail",
+          hideInMenu: true,
         },
       ]
     },
@@ -94,7 +97,7 @@ export default defineConfig({
   // 配置代理
   proxy: {
     '/api': {
-      target: 'http://101.201.46.184:8080', // 后端地址
+      target: 'http://localhost:8080', // 后端地址
       // target: 'localhost:8080',
       changeOrigin: true,
       // pathRewrite: { '^/api': '' },

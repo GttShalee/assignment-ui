@@ -43,6 +43,7 @@ import { getFullAvatarUrl } from '@/utils/avatar';
 import { AVATAR_CONFIG, CLASS_CODE_MAP, ROLE_TYPE_MAP } from '@/constants/config';
 import { COURSE_OPTIONS, getCourseByCode } from '@/constants/course';
 import CourseSelectionModal from '@/components/CourseSelectionModal';
+import NicknameModal from '@/components/NicknameModal';
 import styles from './index.less';
 
 const { Title, Text } = Typography;
@@ -86,6 +87,7 @@ const UserProfile: React.FC = () => {
   const [emailModalVisible, setEmailModalVisible] = useState(false);
   const [updatingEmail, setUpdatingEmail] = useState(false);
   const [courseModalVisible, setCourseModalVisible] = useState(false);
+  const [nicknameModalVisible, setNicknameModalVisible] = useState(false);
   const [passwordForm] = Form.useForm();
   const [emailForm] = Form.useForm();
 
@@ -311,6 +313,11 @@ const UserProfile: React.FC = () => {
     emailForm.setFieldsValue({ newEmail: '' });
   };
 
+  // 打开昵称修改弹窗
+  const handleNicknameEdit = () => {
+    setNicknameModalVisible(true);
+  };
+
   // 更新邮箱
   const handleEmailSubmit = async (values: any) => {
     console.log('邮箱修改表单提交值:', values);
@@ -353,6 +360,20 @@ const UserProfile: React.FC = () => {
       }, 1000);
     } catch (error) {
       console.error('课程更新处理失败:', error);
+    }
+  };
+
+  // 处理昵称修改成功
+  const handleNicknameSuccess = async (nickname: string) => {
+    setNicknameModalVisible(false);
+    
+    try {
+      message.success('昵称更新成功！');
+      
+      // 刷新用户信息以使修改生效
+      await handleRefresh();
+    } catch (error) {
+      console.error('昵称更新处理失败:', error);
     }
   };
 
@@ -465,14 +486,18 @@ const UserProfile: React.FC = () => {
     },
   };
 
-  // 组件挂载时强制刷新用户信息
+  // 组件挂载时输出调试信息
   useEffect(() => {
-    handleRefresh();
+    console.log('Profile - 组件挂载');
+    console.log('Profile - 当前token:', localStorage.getItem('token'));
+    console.log('Profile - 当前用户信息:', userInfo);
     
-    // 测试网络连接
-    console.log('当前token:', localStorage.getItem('token'));
-    console.log('当前用户信息:', userInfo);
-  }, []);
+    // 如果用户信息为空，刷新一次
+    if (!userInfo) {
+      console.log('Profile - 用户信息为空，执行刷新');
+      handleRefresh();
+    }
+  }, []); // 只在挂载时执行一次
 
 
 
@@ -626,6 +651,7 @@ const UserProfile: React.FC = () => {
               <Table
                 dataSource={[
                   { key: 'realName', label: '姓名', value: userInfo?.realName || '-', icon: <UserOutlined /> },
+                  { key: 'nickname', label: '昵称', value: userInfo?.nickname || '未设置', icon: <UserOutlined /> },
                   { key: 'studentId', label: '学号', value: userInfo?.studentId || '-', icon: <IdcardOutlined /> },
                   { key: 'email', label: '邮箱', value: userInfo?.email || '-', icon: <MailOutlined /> },
                   { key: 'classCode', label: '班级', value: getClassName(userInfo?.classCode), icon: <TeamOutlined /> },
@@ -652,6 +678,18 @@ const UserProfile: React.FC = () => {
                     key: 'action',
                     width: 100,
                     render: (text, record) => {
+                      if (record.key === 'nickname') {
+                        return (
+                          <Button
+                            type="link"
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={handleNicknameEdit}
+                          >
+                            {userInfo?.nickname ? '修改' : '设置'}
+                          </Button>
+                        );
+                      }
                       if (record.key === 'email') {
                         return (
                           <Button
@@ -1038,9 +1076,18 @@ const UserProfile: React.FC = () => {
 
         {/* 课程选择弹窗 */}
         <CourseSelectionModal
-          open={courseModalVisible}
+          visible={courseModalVisible}
           onSuccess={handleCourseSelectionSuccess}
           initialCourses={userInfo?.courses || undefined}
+        />
+
+        {/* 昵称修改弹窗 */}
+        <NicknameModal
+          visible={nicknameModalVisible}
+          onCancel={() => setNicknameModalVisible(false)}
+          onSuccess={handleNicknameSuccess}
+          currentNickname={userInfo?.nickname}
+          required={false}
         />
       </div>
     </PageContainer>

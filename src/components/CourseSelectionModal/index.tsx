@@ -8,13 +8,13 @@ import './index.less';
 const { Title, Text } = Typography;
 
 interface CourseSelectionModalProps {
-  open: boolean;
+  visible: boolean;
   onSuccess: (selectedCourses: number) => void;
   initialCourses?: number; // 初始选择的课程（用于编辑模式）
 }
 
 const CourseSelectionModal: React.FC<CourseSelectionModalProps> = ({
-  open,
+  visible,
   onSuccess,
   initialCourses,
 }) => {
@@ -23,7 +23,7 @@ const CourseSelectionModal: React.FC<CourseSelectionModalProps> = ({
 
   // 当弹窗打开时，根据初始课程设置选中状态
   React.useEffect(() => {
-    if (open && initialCourses !== undefined) {
+    if (visible && initialCourses !== undefined) {
       const initialSelectedCourses = [];
       for (const course of COURSE_OPTIONS) {
         if (initialCourses & course.code) {
@@ -31,11 +31,11 @@ const CourseSelectionModal: React.FC<CourseSelectionModalProps> = ({
         }
       }
       setSelectedCourses(initialSelectedCourses);
-    } else if (open && initialCourses === undefined) {
+    } else if (visible && initialCourses === undefined) {
       // 如果是首次选择（没有初始课程），清空选择
       setSelectedCourses([]);
     }
-  }, [open, initialCourses]);
+  }, [visible, initialCourses]);
 
   // 处理课程选择
   const handleCourseToggle = (courseCode: number) => {
@@ -77,7 +77,7 @@ const CourseSelectionModal: React.FC<CourseSelectionModalProps> = ({
   return (
     <Modal
       title={null}
-      open={open}
+      open={visible}
       closable={false}
       maskClosable={false}
       keyboard={false}

@@ -47,33 +47,8 @@ const HomePage: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // 首页加载时不自动刷新用户信息，避免覆盖courses字段
+  // 获取最新公告
   useEffect(() => {
-    // 如果用户信息已存在，就不需要刷新了
-    if (userInfo) {
-      console.log('首页加载，用户信息已存在，跳过刷新');
-      console.log('当前用户信息:', userInfo);
-      return;
-    }
-    
-    const refreshUserInfo = async () => {
-      try {
-        console.log('首页加载，用户信息不存在，开始获取用户信息');
-        await fetchUserInfo();
-        // 同时刷新UmiJS的初始状态
-        await refresh();
-      } catch (error) {
-        console.error('首页获取用户信息失败:', error);
-      }
-    };
-
-    // 延迟500ms执行，让页面先渲染
-    const timer = setTimeout(refreshUserInfo, 500);
-    return () => clearTimeout(timer);
-  }, []); // 只在组件挂载时执行一次
-
-  useEffect(() => {
-    // 获取notify下存储的最新公告
     const mockLatestAnnouncement: Announcement = announcements[0];
     setLatestAnnouncement(mockLatestAnnouncement);
   }, []);
@@ -85,44 +60,27 @@ const HomePage: React.FC = () => {
     return email === studentId;
   };
 
-  // 课程选择检查逻辑 - 页面加载后检查
+  // 课程选择和邮箱检查逻辑 - 当userInfo就绪后检查
   useEffect(() => {
-    // 延迟1500ms后检查，确保用户信息已经完全加载
-    const timer = setTimeout(() => {
-      console.log('首页课程检查 - 用户信息:', userInfo);
-      console.log('首页课程检查 - courses字段:', userInfo?.courses);
-      console.log('首页课程检查 - courses类型:', typeof userInfo?.courses);
-      
-      if (!userInfo) {
-        console.log('用户信息为空，跳过课程检查');
-        return;
-      }
-      
-      if (userInfo.courses === null || userInfo.courses === undefined || userInfo.courses === 0) {
-        console.log('用户未选择课程，显示课程选择弹窗');
-        setShowCourseModal(true);
-      } else if (userInfo.courses && userInfo.courses > 0) {
-        console.log('用户已选择课程，不显示课程选择弹窗', { courses: userInfo.courses });
-      } else {
-        console.log('courses字段异常:', userInfo.courses);
-      }
-    }, 1500); // 增加延迟时间，确保用户信息刷新完成
+    if (!userInfo) {
+      console.log('首页 - 用户信息为空，跳过检查');
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, [userInfo]);
-
-  // 邮箱检查逻辑 - 页面加载后检查（在课程选择之后）
-  useEffect(() => {
-    // 延迟1.5秒后检查，让课程选择弹窗先显示
-    const timer = setTimeout(() => {
-      // 只有在没有显示课程选择弹窗时才检查邮箱
-      if (userInfo && !showCourseModal && checkEmailAndStudentId()) {
+    console.log('首页 - 用户信息已加载:', userInfo);
+    
+    // 先检查课程选择
+    if (userInfo.courses === null || userInfo.courses === undefined || userInfo.courses === 0) {
+      console.log('首页 - 用户未选择课程，显示课程选择弹窗');
+      setShowCourseModal(true);
+    } else {
+      console.log('首页 - 用户已选择课程:', userInfo.courses);
+      // 课程已选择，检查邮箱
+      if (checkEmailAndStudentId()) {
         setShowEmailModal(true);
       }
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, [userInfo, showCourseModal]);
+    }
+  }, [userInfo]);
 
   // 处理邮箱更新成功
   const handleEmailUpdateSuccess = async (newEmail: string) => {
@@ -286,18 +244,24 @@ const HomePage: React.FC = () => {
           当前时间：{time}
         </div>
         <br />
+
+        
+        <div style={{ width: '230px', height: '20px', backgroundColor: 'lightblue' }}> 为什么今天第一次旷课就被逮捕了  :(</div>
+        <br />
+
+        
         <div style={{ fontSize: 16, fontStyle: 'italic', color: '#666', marginBottom: 32 }}>{poem}</div>
       </div>
 
       {/* 课程选择弹窗 */}
       <CourseSelectionModal
-        open={showCourseModal}
+        visible={showCourseModal}
         onSuccess={handleCourseSelectionSuccess}
       />
 
       {/* 邮箱更新弹窗 */}
       <EmailUpdateModal
-        open={showEmailModal}
+        visible={showEmailModal}
         onCancel={handleEmailUpdateCancel}
         onSuccess={handleEmailUpdateSuccess}
         currentEmail={userInfo?.email || ''}

@@ -13,6 +13,7 @@ export interface UserInfo {
   roleType?: number;
   status?: boolean;
   courses?: number | null; // 用户选择的课程（二进制位掩码）
+  nickname?: string; // 用户昵称
   createdAt?: string;
   updatedAt?: string;
 }
@@ -28,6 +29,7 @@ export interface LoginResponse {
   roleType: number;
   expireTime: string;
   courses?: number | null; // 用户选择的课程（二进制位掩码）
+  nickname?: string; // 用户昵称
 }
 
 /**
@@ -144,6 +146,7 @@ export async function getCurrentUser(): Promise<UserInfo> {
     roleType: response.roleType,
     status: response.status,
     courses: response.courses, // 添加courses字段
+    nickname: response.nickname, // 添加nickname字段
     createdAt: response.createdAt,
     updatedAt: response.updatedAt,
   };
@@ -198,6 +201,7 @@ export function convertLoginResponseToUserInfo(response: any): UserInfo {
     roleType: response.roleType,
     status: response.status,
     courses: response.courses,
+    nickname: response.nickname,
     createdAt: response.createdAt,
     updatedAt: response.updatedAt,
   };
@@ -330,6 +334,31 @@ export async function updateUserCourses(data: UpdateCoursesRequest): Promise<any
     return response;
   } catch (error: any) {
     console.error('updateUserCourses错误:', error);
+    throw error;
+  }
+}
+
+// 更新用户昵称接口
+export interface UpdateNicknameRequest {
+  nickname: string;
+}
+
+export async function updateNickname(data: UpdateNicknameRequest): Promise<any> {
+  console.log('updateNickname函数被调用，参数:', data);
+  
+  try {
+    const response = await request('/api/auth/update_nickname', {
+      method: 'POST',
+      data,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    console.log('updateNickname响应:', response);
+    return response;
+  } catch (error: any) {
+    console.error('updateNickname错误:', error);
     throw error;
   }
 }

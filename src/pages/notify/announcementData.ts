@@ -16,6 +16,18 @@ export interface Announcement {
 
 export const announcements: Announcement[] = [
   {
+    id: 6,
+    title: '解决了选课问题',
+    summary: '整体更新很多api',
+    updates: [
+      { content: '更新', status: 'new' },
+    ],
+    date: '2025-10-11 17:54',
+    type: 'success',
+    version: 'v2.0.0',
+    author: 'Shalee'
+  },
+  {
     id: 5,
     title: '添加邮箱提醒功能',
     summary: '在发布作业和截止前2小时通过邮箱发送提醒',
@@ -27,7 +39,7 @@ export const announcements: Announcement[] = [
     ],
     date: '2025-9-17 21:54',
     type: 'success',
-    version: 'v1.1.0',
+    version: 'v1.2.0',
     author: 'Shalee'
   },
   {
@@ -44,7 +56,7 @@ export const announcements: Announcement[] = [
     ],
     date: '2025-8-1 16:37',
     type: 'success',
-    version: 'v1.0.0',
+    version: 'v1.1.0',
     author: 'Shalee'
   },
   {

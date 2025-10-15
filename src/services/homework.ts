@@ -321,4 +321,45 @@ export function downloadMyHomework(homeworkId: number): void {
 // 为了向后兼容，保留原有函数但使用新接口实现
 export function downloadFile(homeworkId: number): void {
   return downloadMyHomework(homeworkId);
+}
+
+// 作业提交记录类型
+export interface HomeworkSubmissionRecord {
+  id: number;
+  student_id: string;
+  user_name: string;
+  homework_id: number;
+  homework_title: string;
+  submission_time: string;
+  submission_status: number; // 0=按时提交，1=补交
+  is_late_submission: boolean;
+  is_first_submission: boolean;
+  class_code: string;
+  course_name: string;
+}
+
+export interface HomeworkSubmissionRecordsResponse {
+  content: HomeworkSubmissionRecord[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+  };
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+  first: boolean;
+  number: number;
+  size: number;
+  numberOfElements: number;
+}
+
+// 获取作业提交记录（用于班级空间展示）
+export async function getHomeworkSubmissionRecords(params?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<HomeworkSubmissionRecordsResponse> {
+  return request('/api/homework-submission/records', {
+    method: 'GET',
+    params,
+  });
 } 
