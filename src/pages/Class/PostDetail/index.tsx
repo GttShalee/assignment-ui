@@ -228,9 +228,9 @@ const PostDetail: React.FC = () => {
             />
             <div style={{ marginLeft: 16, flex: 1 }}>
               <div>
-                <Text strong style={{ fontSize: 16 }}>
-                  {post.nickname || post.student_name}
-                </Text>
+              <Text strong style={{ fontSize: 16 }}>
+                {post.nick_name || post.nickname || post.student_name}
+              </Text>
               </div>
               <Text type="secondary" style={{ fontSize: 14 }}>
                 {dayjs(post.created_at).format('YYYY-MM-DD HH:mm')}
@@ -391,7 +391,7 @@ const PostDetail: React.FC = () => {
                         }}>
                           <div>
                             <Text strong style={{ fontSize: 15 }}>
-                              {reply.nickname || reply.student_name}
+                              {reply.nick_name || reply.nickname || reply.student_name}
                             </Text>
                             <Text type="secondary" style={{ marginLeft: 12, fontSize: 13 }}>
                               {dayjs(reply.created_at).fromNow()}
@@ -449,7 +449,7 @@ const PostDetail: React.FC = () => {
           onSuccess={handleReplySuccess}
           isReply={true}
           parentId={post.id}
-          replyToName={post.nickname || post.student_name}
+          replyToName={post.nick_name || post.nickname || post.student_name}
         />
       </div>
     </div>

@@ -150,6 +150,27 @@ const WorkList: React.FC = () => {
     )
   };
 
+  // 获取用户选择的课程选项（用于筛选下拉框）
+  const getUserCourseOptions = () => {
+    if (!userInfo?.courses || userInfo.courses === 0) {
+      // 如果用户未选择课程，返回所有课程选项
+      return getCourseSelectOptions();
+    }
+    
+    // 根据用户的courses字段（二进制位掩码）筛选课程
+    const selectedCourses = [];
+    for (const course of COURSE_OPTIONS) {
+      if (userInfo.courses & course.code) {
+        selectedCourses.push({
+          label: course.label,
+          value: course.value,
+          title: course.description
+        });
+      }
+    }
+    return selectedCourses;
+  };
+
   // 获取作业列表
   const fetchHomeworks = async () => {
     if (!userInfo) {
@@ -203,28 +224,6 @@ const WorkList: React.FC = () => {
     }
   }, [userInfo]);
 
-  // 获取用户选择的课程选项（用于筛选下拉框）
-  const getUserCourseOptions = () => {
-    if (!userInfo?.courses || userInfo.courses === 0) {
-      // 如果用户未选择课程，返回所有课程选项
-      return getCourseSelectOptions();
-    }
-    
-    // 根据用户的courses字段（二进制位掩码）筛选课程
-    const selectedCourses = [];
-    for (const course of COURSE_OPTIONS) {
-      if (userInfo.courses & course.code) {
-        selectedCourses.push({
-          label: course.label,
-          value: course.value,
-          title: course.description
-        });
-      }
-    }
-    
-    // console.log('用户选择的课程选项:', selectedCourses);
-    return selectedCourses;
-  };
 
   // 通用的文件下载函数 - 用于下载作业附件等非学生提交文件
   const downloadFileWithAuth = (fileUrl: string, fileName: string, description: string = '文件') => {

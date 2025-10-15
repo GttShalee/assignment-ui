@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Form, Input, Button, message, Upload } from 'antd';
 import { EditOutlined, UploadOutlined, PaperClipOutlined } from '@ant-design/icons';
 import type { UploadFile } from 'antd/es/upload/interface';
+import { useModel } from '@umijs/max';
 
 const { TextArea } = Input;
 
@@ -22,6 +23,7 @@ const PostEditor: React.FC<PostEditorProps> = ({
   parentId = null,
   replyToName,
 }) => {
+  const { userInfo } = useModel('global');
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
@@ -39,6 +41,12 @@ const PostEditor: React.FC<PostEditorProps> = ({
       // 主帖需要标题
       if (!isReply) {
         postData.title = values.title;
+      }
+
+      // 添加昵称字段 - 后端需要 nick_name
+      if (userInfo?.nickname) {
+        postData.nick_name = userInfo.nickname;
+        console.log('发帖时传送昵称:', userInfo.nickname);
       }
 
       // 如果有附件

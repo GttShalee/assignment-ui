@@ -6,7 +6,8 @@ export interface ForumPost {
   student_id: string;
   student_name: string;
   student_avatar?: string;
-  nickname?: string;
+  nick_name?: string; // 后端返回的昵称字段
+  nickname?: string; // 前端兼容字段
   class_code: string;
   parent_id: number | null;
   title?: string;
@@ -29,6 +30,7 @@ export interface CreatePostRequest {
   title?: string;
   content: string;
   parent_id?: number | null;
+  nick_name?: string; // 后端需要的昵称字段
   attachment_url?: string;
   attachment_name?: string;
 }

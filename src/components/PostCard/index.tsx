@@ -69,7 +69,7 @@ const PostCard: React.FC<PostCardProps> = ({
           {/* 顶部信息 */}
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8, gap: 8 }}>
             <Text strong style={{ fontSize: 15 }}>
-              {post.nickname || post.student_name}
+              {post.nick_name || post.nickname || post.student_name}
             </Text>
             
             {post.is_top && (

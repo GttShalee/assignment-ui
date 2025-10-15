@@ -29,7 +29,8 @@ export interface LoginResponse {
   roleType: number;
   expireTime: string;
   courses?: number | null; // 用户选择的课程（二进制位掩码）
-  nickname?: string; // 用户昵称
+  nick_name?: string; // 用户昵称（后端返回字段名）
+  nickname?: string; // 兼容字段
 }
 
 /**
@@ -135,6 +136,9 @@ export async function getCurrentUser(): Promise<UserInfo> {
   });
   
   // 转换响应数据，确保字段名一致
+  // 优先使用 nick_name，兼容 nickname
+  const nickname = response.nick_name || response.nickname;
+  
   return {
     id: response.id?.toString() || '',
     realName: response.realName,
@@ -146,7 +150,7 @@ export async function getCurrentUser(): Promise<UserInfo> {
     roleType: response.roleType,
     status: response.status,
     courses: response.courses, // 添加courses字段
-    nickname: response.nickname, // 添加nickname字段
+    nickname: nickname, // 兼容 nickname 和 nick_name
     createdAt: response.createdAt,
     updatedAt: response.updatedAt,
   };
@@ -174,6 +178,7 @@ export function getToken(): string | null {
 export function clearToken(): void {
   localStorage.removeItem('token');
   localStorage.removeItem('user_courses'); // 同时清除courses信息
+  localStorage.removeItem('user_nickname'); // 同时清除nickname信息
 }
 
 /**
@@ -190,6 +195,15 @@ export function isLoggedIn(): boolean {
  * @returns 用户信息对象
  */
 export function convertLoginResponseToUserInfo(response: any): UserInfo {
+  // 从 nick_name 或 nickname 获取昵称，优先使用 nick_name
+  const nickname = response.nick_name || response.nickname;
+  
+  // 如果有昵称，保存到 localStorage
+  if (nickname) {
+    localStorage.setItem('user_nickname', nickname);
+    console.log('登录时保存昵称到 localStorage:', nickname);
+  }
+  
   return {
     id: response.userId?.toString() || response.id?.toString() || '',
     realName: response.realName,
@@ -201,7 +215,7 @@ export function convertLoginResponseToUserInfo(response: any): UserInfo {
     roleType: response.roleType,
     status: response.status,
     courses: response.courses,
-    nickname: response.nickname,
+    nickname: nickname, // 统一使用转换后的昵称
     createdAt: response.createdAt,
     updatedAt: response.updatedAt,
   };
@@ -340,22 +354,29 @@ export async function updateUserCourses(data: UpdateCoursesRequest): Promise<any
 
 // 更新用户昵称接口
 export interface UpdateNicknameRequest {
-  nickname: string;
+  nick_name: string; // 后端使用下划线命名
 }
 
-export async function updateNickname(data: UpdateNicknameRequest): Promise<any> {
-  console.log('updateNickname函数被调用，参数:', data);
+export async function updateNickname(nickname: string): Promise<any> {
+  console.log('updateNickname函数被调用，昵称:', nickname);
   
   try {
     const response = await request('/api/auth/update_nickname', {
       method: 'POST',
-      data,
+      data: {
+        nick_name: nickname, // 发送给后端使用 nick_name 字段
+      },
       headers: {
         'Content-Type': 'application/json',
       },
     });
     
     console.log('updateNickname响应:', response);
+    
+    // 更新成功后，保存到 localStorage
+    localStorage.setItem('user_nickname', nickname);
+    console.log('昵称更新成功，已保存到 localStorage:', nickname);
+    
     return response;
   } catch (error: any) {
     console.error('updateNickname错误:', error);

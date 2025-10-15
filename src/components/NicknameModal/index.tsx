@@ -25,7 +25,8 @@ const NicknameModal: React.FC<NicknameModalProps> = ({
     try {
       // 导入并调用更新昵称API
       const { updateNickname } = await import('@/services/auth');
-      const result = await updateNickname({ nickname: values.nickname });
+      // 传递字符串，函数内部会转换为 nick_name 发送给后端
+      const result = await updateNickname(values.nickname);
       
       console.log('昵称更新成功，后端返回:', result);
       

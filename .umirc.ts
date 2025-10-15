@@ -80,9 +80,15 @@ export default defineConfig({
           component:"./Class/ClassRoom",
         },
         {
-          name: "班级广场",
+          name: "班级论坛",
           path:"/Class/ClassSquare",
           component:"./Class/ClassSquare",
+        },
+        {
+          name: "帖子详情",
+          path:"/Class/PostDetail/:id",
+          component:"./Class/PostDetail",
+          hideInMenu: true,
         },
       ]
     },

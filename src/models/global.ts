@@ -54,12 +54,22 @@ const useUser = () => {
             }
           }
           
-          // 如果API没有返回nickname字段，尝试从之前的状态恢复
-          if (user.nickname === undefined || user.nickname === null) {
-            if (prevUserInfo?.nickname) {
+          // 如果API没有返回nickname字段（或返回空字符串），尝试从之前的状态或localStorage恢复
+          if (!user.nickname || user.nickname.trim() === '') {
+            if (prevUserInfo?.nickname && prevUserInfo.nickname.trim() !== '') {
               console.log('全局模型 - 从之前的用户信息保留nickname字段:', prevUserInfo.nickname);
               finalUser.nickname = prevUserInfo.nickname;
+            } else {
+              // 从localStorage恢复
+              const savedNickname = localStorage.getItem('user_nickname');
+              if (savedNickname && savedNickname.trim() !== '') {
+                console.log('全局模型 - 从localStorage恢复nickname字段:', savedNickname);
+                finalUser.nickname = savedNickname;
+              }
             }
+          } else {
+            // 如果API返回了nickname，保存到localStorage
+            localStorage.setItem('user_nickname', user.nickname);
           }
           
           console.log('全局模型 - 用户信息已更新:', finalUser);
