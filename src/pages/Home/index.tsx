@@ -10,6 +10,8 @@ import { announcements, UpdateItem } from '../notify/announcementData';
 import EmailUpdateModal from '@/components/EmailUpdateModal';
 import CourseSelectionModal from '@/components/CourseSelectionModal';
 import { updateEmail, getCurrentUser } from '@/services/auth';
+import {CLASS_CODE_MAP} from '@/constants/config'
+
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -29,6 +31,11 @@ interface Announcement {
   date: string;
   type: 'success' | 'warning' | 'info';
 }
+
+  // 获取班级名称
+  const getClassName = (classCode: string) => {
+    return CLASS_CODE_MAP[classCode] || classCode;
+  };
 
 const HomePage: React.FC = () => {
   const { name, userInfo, updateUserInfo, fetchUserInfo, loading } = useModel('global');

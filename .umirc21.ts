@@ -6,6 +6,9 @@ export default defineConfig({
   model: {},
   initialState: {},
   request: {},
+  define: {
+    API_BASE_URL: process.env.NODE_ENV === 'production' ? 'http://101.201.46.184:8080' : 'http://localhost:8080',
+  },
   layout: {
     title: "WorkUpload",
   },
@@ -55,6 +58,11 @@ export default defineConfig({
           path: "/work/WorkList",
           component: "./work/WorkList",
         },
+        // {
+        //   name: "作业记录",
+        //   path: "/work/WorkStatistics",
+        //   component:"./work/WorkStatistics",
+        // },
         {
           name: "历史提交",
           path: "/work/WorkHistory",
@@ -97,8 +105,7 @@ export default defineConfig({
   // 配置代理
   proxy: {
     '/api': {
-      target: 'http://localhost:8080', // 后端地址
-      // target: 'localhost:8080',
+      target: 'http://localhost:8080', // 你的本地后端地址
       changeOrigin: true,
       // pathRewrite: { '^/api': '' },
     },

@@ -96,6 +96,32 @@ const Login: React.FC = () => {
         localStorage.setItem('user_courses', response.courses.toString());
       }
       
+      // ⚠️ 先获取班级信息，再更新全局状态，确保 classCode 正确传递
+      // 登录后获取并存储用户班级信息
+      try {
+        const { getClassList } = await import('@/services/homework');
+        const classList = await getClassList();
+        
+        if (classList && classList.length > 0) {
+          // 存储班级列表到 localStorage
+          localStorage.setItem('user_class_list', JSON.stringify(classList));
+          console.log('登录成功，已保存用户班级列表:', classList);
+          
+          // 如果用户信息中没有 classCode，使用第一个班级作为默认班级
+          if (!userInfo.classCode && classList[0]?.classCode) {
+            userInfo.classCode = classList[0].classCode;
+            localStorage.setItem('user_class_code', classList[0].classCode);
+            console.log('登录成功，设置默认班级:', classList[0].classCode);
+          }
+        } else {
+          console.warn('用户没有关联任何班级');
+        }
+      } catch (classError) {
+        console.error('获取班级列表失败:', classError);
+        // 班级信息获取失败不影响登录流程
+      }
+      
+      // 在获取班级信息后更新全局状态，确保 classCode 已设置
       updateUserInfo(userInfo);
       
       // 刷新UmiJS初始状态，确保全局状态同步

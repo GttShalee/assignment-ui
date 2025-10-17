@@ -179,6 +179,8 @@ export function clearToken(): void {
   localStorage.removeItem('token');
   localStorage.removeItem('user_courses'); // 同时清除courses信息
   localStorage.removeItem('user_nickname'); // 同时清除nickname信息
+  localStorage.removeItem('user_class_list'); // 同时清除班级列表信息
+  localStorage.removeItem('user_class_code'); // 同时清除默认班级代码
 }
 
 /**

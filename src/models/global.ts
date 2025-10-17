@@ -72,6 +72,24 @@ const useUser = () => {
             localStorage.setItem('user_nickname', user.nickname);
           }
           
+          // 如果API没有返回classCode字段，从localStorage恢复
+          if (!user.classCode || user.classCode.trim() === '') {
+            if (prevUserInfo?.classCode && prevUserInfo.classCode.trim() !== '') {
+              console.log('全局模型 - 从之前的用户信息保留classCode字段:', prevUserInfo.classCode);
+              finalUser.classCode = prevUserInfo.classCode;
+            } else {
+              // 从localStorage恢复
+              const savedClassCode = localStorage.getItem('user_class_code');
+              if (savedClassCode && savedClassCode.trim() !== '') {
+                console.log('全局模型 - 从localStorage恢复classCode字段:', savedClassCode);
+                finalUser.classCode = savedClassCode;
+              }
+            }
+          } else {
+            // 如果API返回了classCode，保存到localStorage
+            localStorage.setItem('user_class_code', user.classCode);
+          }
+          
           console.log('全局模型 - 用户信息已更新:', finalUser);
           return finalUser;
         });
